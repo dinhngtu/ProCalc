@@ -4,11 +4,19 @@ namespace ProCalcCore;
 
 public class RPNCalculator<T> : IRPNCalculator
     where T : struct, IBinaryInteger<T>, IMinMaxValue<T> {
-    readonly Deque<T> _stack = new(256);
+    readonly Deque<StackEntry<T>> _stack = new(256);
 
     public RPNCalculator() { }
 
     public RPNCalculator(IEnumerable<T> values) {
+        foreach (var value in values) {
+            _stack.PushFront(new StackEntry<T>() {
+                Value = value,
+            });
+        }
+    }
+
+    internal RPNCalculator(IEnumerable<StackEntry<T>> values) {
         foreach (var value in values) {
             _stack.PushFront(value);
         }
@@ -19,11 +27,23 @@ public class RPNCalculator<T> : IRPNCalculator
 
     public int Count => _stack.Count;
 
-    public void Push(object value) {
-        _stack.PushFront(IntConverter.ToCalculatorTypeTruncating<T>(value));
+    public void Push(object value, string? original, string? comment, string? altComment) {
+        _stack.PushFront(new StackEntry<T>() {
+            Value = IntConverter.ToCalculatorTypeTruncating<T>(value),
+            Comment = comment,
+            AltComment = altComment,
+        });
     }
 
-    public object Peek() {
+    public void Push(IStackEntry value) {
+        _stack.PushFront(new StackEntry<T>() {
+            Value = IntConverter.ToCalculatorTypeTruncating<T>(value.Object),
+            Comment = value.Comment,
+            AltComment = value.AltComment,
+        });
+    }
+
+    public IStackEntry Peek() {
         if (_stack.Count > 0)
             return _stack.PeekFront();
         else
@@ -44,19 +64,19 @@ public class RPNCalculator<T> : IRPNCalculator
 
         try {
             result = op switch {
-                BinaryOperation.Add => a + b,
-                BinaryOperation.Subtract => a - b,
-                BinaryOperation.Multiply => a * b,
-                BinaryOperation.Divide => a / b,
-                BinaryOperation.Remainder => a % b,
-                BinaryOperation.And => a & b,
-                BinaryOperation.Or => a | b,
-                BinaryOperation.Xor => a ^ b,
-                BinaryOperation.ShiftLeft => a << int.CreateChecked(b),
-                BinaryOperation.ShiftRight => a >>> int.CreateChecked(b),
-                BinaryOperation.ShiftRightArithmetic => a >> int.CreateChecked(b),
-                BinaryOperation.RotateLeft => T.RotateLeft(a, int.CreateChecked(b)),
-                BinaryOperation.RotateRight => T.RotateRight(a, int.CreateChecked(b)),
+                BinaryOperation.Add => a.Value + b.Value,
+                BinaryOperation.Subtract => a.Value - b.Value,
+                BinaryOperation.Multiply => a.Value * b.Value,
+                BinaryOperation.Divide => a.Value / b.Value,
+                BinaryOperation.Remainder => a.Value % b.Value,
+                BinaryOperation.And => a.Value & b.Value,
+                BinaryOperation.Or => a.Value | b.Value,
+                BinaryOperation.Xor => a.Value ^ b.Value,
+                BinaryOperation.ShiftLeft => a.Value << int.CreateChecked(b.Value),
+                BinaryOperation.ShiftRight => a.Value >>> int.CreateChecked(b.Value),
+                BinaryOperation.ShiftRightArithmetic => a.Value >> int.CreateChecked(b.Value),
+                BinaryOperation.RotateLeft => T.RotateLeft(a.Value, int.CreateChecked(b.Value)),
+                BinaryOperation.RotateRight => T.RotateRight(a.Value, int.CreateChecked(b.Value)),
                 _ => throw new NotSupportedException(nameof(op)),
             };
         }
@@ -65,7 +85,11 @@ public class RPNCalculator<T> : IRPNCalculator
             _stack.PushFront(b);
             throw;
         }
-        _stack.PushFront(result);
+        _stack.PushFront(new StackEntry<T>() {
+            Value = result,
+            Comment = a.Comment,
+            AltComment = b.Comment,
+        });
     }
 
     T MaskLeft(int val) {
@@ -85,12 +109,12 @@ public class RPNCalculator<T> : IRPNCalculator
 
         try {
             result = op switch {
-                UnaryOperation.Not => ~val,
-                UnaryOperation.MaskLeft => MaskLeft(int.CreateChecked(val)),
-                UnaryOperation.MaskRight => MaskRight(int.CreateChecked(val)),
-                UnaryOperation.Popcount => T.PopCount(val),
-                UnaryOperation.CountLeadingZeroes => T.LeadingZeroCount(val),
-                UnaryOperation.CountTrailingZeroes => T.TrailingZeroCount(val),
+                UnaryOperation.Not => ~val.Value,
+                UnaryOperation.MaskLeft => MaskLeft(int.CreateChecked(val.Value)),
+                UnaryOperation.MaskRight => MaskRight(int.CreateChecked(val.Value)),
+                UnaryOperation.Popcount => T.PopCount(val.Value),
+                UnaryOperation.CountLeadingZeroes => T.LeadingZeroCount(val.Value),
+                UnaryOperation.CountTrailingZeroes => T.TrailingZeroCount(val.Value),
                 _ => throw new NotSupportedException(nameof(op)),
             };
         }
@@ -99,7 +123,11 @@ public class RPNCalculator<T> : IRPNCalculator
             throw;
         }
 
-        _stack.PushFront(result);
+        _stack.PushFront(new StackEntry<T>() {
+            Value = result,
+            Comment = val.Comment,
+            AltComment = val.AltComment,
+        });
     }
 
     void Drop(int count) {
@@ -126,7 +154,7 @@ public class RPNCalculator<T> : IRPNCalculator
         if (lifoIndex > _stack.Count)
             throw new IndexOutOfRangeException();
 
-        var temp = new List<T>(lifoIndex - 1);
+        var temp = new List<StackEntry<T>>(lifoIndex - 1);
         for (int i = 0; i < lifoIndex - 1; i++)
             temp.Add(_stack.PopFront());
 
@@ -144,19 +172,32 @@ public class RPNCalculator<T> : IRPNCalculator
         (_stack[-1], _stack[-lifoIndex]) = (_stack[-lifoIndex], _stack[-1]);
     }
 
+    void SetComment(int lifoIndex, string? comment) {
+        var newValue = _stack[-lifoIndex];
+        newValue.AltComment = newValue.Comment;
+        newValue.Comment = comment;
+        _stack[-lifoIndex] = newValue;
+    }
+
+    void SwapComment(int lifoIndex) {
+        var newValue = _stack[-lifoIndex];
+        (newValue.Comment, newValue.AltComment) = (newValue.AltComment, newValue.Comment);
+        _stack[-lifoIndex] = newValue;
+    }
+
     public void DoStackOp(StackOperation op, int? input) {
         if (_stack.Count < 1)
             throw new InvalidOperationException("Not enough operands");
 
         int val = 0;
-        T saved = T.Zero;
+        StackEntry<T> saved = default;
         if (input != null)
             val = input.Value;
         else
             saved = _stack.PopFront();
         try {
             if (input == null)
-                val = int.CreateChecked(saved);
+                val = int.CreateChecked(saved.Value);
             switch (op) {
                 case StackOperation.Drop:
                     Drop(val);
@@ -170,6 +211,14 @@ public class RPNCalculator<T> : IRPNCalculator
                 case StackOperation.Swap:
                     Swap(val);
                     break;
+                case StackOperation.SetComment:
+                    if (input != null)
+                        throw new InvalidOperationException("Requires argument from stack");
+                    SetComment(val, saved.Comment);
+                    break;
+                case StackOperation.SwapComment:
+                    SwapComment(val);
+                    break;
             }
         }
         catch {
@@ -179,16 +228,24 @@ public class RPNCalculator<T> : IRPNCalculator
         }
     }
 
-    public IEnumerable<object> GetStackItems(int max = int.MaxValue) {
-        return _stack.EnumerateLifo(max).Cast<object>();
+    public IEnumerable<IStackEntry> GetStackItems(int max = int.MaxValue) {
+        return _stack.EnumerateLifo(max).Cast<IStackEntry>();
     }
 
     public RPNCalculator<U> Into<U>(bool signExtend = false)
         where U : struct, IBinaryInteger<U>, IMinMaxValue<U> {
         if (signExtend)
-            return new RPNCalculator<U>(_stack.Select(U.CreateTruncating));
+            return new RPNCalculator<U>(_stack.Select(x => new StackEntry<U>() {
+                Value = U.CreateTruncating(x.Value),
+                Comment = x.Comment,
+                AltComment = x.AltComment,
+            }));
         else
-            return new RPNCalculator<U>(_stack.Select(IntConverter.ToCalculatorTypeUnsigned<T, U>));
+            return new RPNCalculator<U>(_stack.Select(x => new StackEntry<U>() {
+                Value = IntConverter.ToCalculatorTypeUnsigned<T, U>(x.Value),
+                Comment = x.Comment,
+                AltComment = x.AltComment,
+            }));
     }
 
     public IRPNCalculator ConvertTo(Type type, bool signExtend) {

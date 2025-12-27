@@ -30,4 +30,6 @@ public enum StackOperation {
     Rotate,
     Extract,
     Swap,
+    SetComment,
+    SwapComment,
 }

@@ -22,6 +22,7 @@ class Program {
     bool _index = true;
 
     readonly StringBuilder _input = new();
+    bool _comment = false;
     bool _exit = false;
 
     void DoMain() {
@@ -32,6 +33,7 @@ class Program {
             try {
                 if (HandleModeKeys(key) ||
                     HandleEditKeys(key) ||
+                    HandleCommentKeys(key) ||
                     HandleStackKeys(key) ||
                     HandleOperators(key) ||
                     HandleInputKeys(key) ||
@@ -51,6 +53,17 @@ class Program {
                 continue;
             }
         }
+    }
+
+    void Pause() {
+        Console.SetCursorPosition(0, Console.WindowHeight - 1);
+        Console.Write("Press any key...");
+        Console.ReadKey(true);
+    }
+
+    void ResetInput() {
+        _input.Clear();
+        _comment = false;
     }
 
     bool HandleModeKeys(ConsoleKeyInfo key) {
@@ -136,6 +149,10 @@ class Program {
                     Ctrl+9 = toggle digit grouping           Ctrl+0 = toggle zero pad
                     Ctrl+1 = toggle upper/lowercase hex      Ctrl+2 = print index
 
+                    Commenting:
+                    Append `;` as comment                    Use `index:comment` to set comment
+                    " = swap comment of index
+
                     Stack:
                     Up/Down = rotate stack                   Delete = edit last
                     Shift+Delete = delete last               Ctrl+Delete = clear all
@@ -153,12 +170,6 @@ class Program {
                 return false;
         }
         return true;
-    }
-
-    void Pause() {
-        Console.SetCursorPosition(0, Console.WindowHeight - 1);
-        Console.Write("Press any key...");
-        Console.ReadKey(true);
     }
 
     bool HandleEditKeys(ConsoleKeyInfo key) {
@@ -179,11 +190,43 @@ class Program {
                     _input.Remove(_input.Length - 1, 1);
                 break;
             case ConsoleKey.Escape when key.Modifiers == ConsoleModifiers.None:
-                _input.Clear();
+                ResetInput();
                 break;
             default:
                 return false;
         }
+        return true;
+    }
+
+    bool HandleCommentKeys(ConsoleKeyInfo key) {
+        switch (key.Key) {
+            case ConsoleKey.Oem7 when key.Modifiers == ConsoleModifiers.Shift:
+                if (_input.Length == 0) {
+                    _calc.DoStackOp(StackOperation.SwapComment, 1);
+                }
+                else {
+                    PushInput(true);
+                    try {
+                        _calc.DoStackOp(StackOperation.SwapComment, null);
+                    }
+                    catch {
+                        _calc.DoStackOp(StackOperation.Drop, 1);
+                        throw;
+                    }
+                }
+                return true;
+            default:
+                break;
+        }
+
+        if (!_comment) {
+            return false;
+        }
+        if (key.KeyChar == '\0')
+            return false;
+        if (key.Modifiers != ConsoleModifiers.None && key.Modifiers != ConsoleModifiers.Shift)
+            return false;
+        _input.Append(key.KeyChar);
         return true;
     }
 
@@ -218,8 +261,8 @@ class Program {
                 }
                 break;
             case ConsoleKey.Delete when key.Modifiers == ConsoleModifiers.Control:
-                _input.Clear();
                 _calc.Clear();
+                ResetInput();
                 break;
             case ConsoleKey.Z when key.Modifiers == ConsoleModifiers.None:
                 if (_input.Length == 0) {
@@ -253,7 +296,7 @@ class Program {
                 break;
             case ConsoleKey.P when key.Modifiers == ConsoleModifiers.None:
                 var val = _calc.Peek();
-                PrintValue(val);
+                PrintValue(val.Object);
                 break;
             default:
                 return false;
@@ -350,6 +393,10 @@ class Program {
         if (key.Modifiers != ConsoleModifiers.None && key.Modifiers != ConsoleModifiers.Shift)
             return false;
         switch (key.Key) {
+            case ConsoleKey.Oem1:
+                _comment = true;
+                _input.Append(key.KeyChar);
+                break;
             case ConsoleKey.A:
             case ConsoleKey.B:
             case ConsoleKey.C:
@@ -442,10 +489,21 @@ class Program {
     void PushInput(bool stack = false) {
         if (_input.Length == 0)
             return;
+
+        var original = _input.ToString();
+        var commentIndex = original.IndexOfAny(';', ':');
+        string? comment = null;
+        bool isOverrideComment = false;
+        if (commentIndex >= 0) {
+            _input.Remove(commentIndex, _input.Length - commentIndex);
+            comment = original[(commentIndex + 1)..];
+            isOverrideComment = original[commentIndex] == ':';
+        }
+
         _input.Replace(" ", null);
         try {
             if (stack) {
-                _calc.Push(Int128.Parse(_input.ToString()));
+                _calc.Push(Int128.Parse(_input.ToString()), original, comment);
             }
             else {
                 var realFormat = _format;
@@ -512,13 +570,23 @@ class Program {
                     _ => throw new NotImplementedException(),
                 };
                 if (negative)
-                    _calc.Push(Int128.CreateTruncating(-raw));
+                    _calc.Push(Int128.CreateTruncating(-raw), original, comment);
                 else
-                    _calc.Push(Int128.CreateTruncating(raw));
+                    _calc.Push(Int128.CreateTruncating(raw), original, comment);
+            }
+
+            if (isOverrideComment) {
+                try {
+                    _calc.DoStackOp(StackOperation.SetComment, null);
+                }
+                catch {
+                    _calc.DoStackOp(StackOperation.Drop, 1);
+                    throw;
+                }
             }
         }
         finally {
-            _input.Clear();
+            ResetInput();
         }
     }
 
@@ -549,7 +617,6 @@ class Program {
     void FormatOctalRaw(
         StringBuilder sb,
         object value,
-        DisplaySignedness sign,
         bool zeropad) {
         var size = GetPadSize(value, true);
 
@@ -573,7 +640,7 @@ class Program {
         bool upper) {
 
         if (format == DisplayFormat.Octal) {
-            FormatOctalRaw(sb, value, sign: sign, zeropad: zeropad);
+            FormatOctalRaw(sb, value, zeropad: zeropad);
         }
         else {
             var size = GetPadSize(value, zeropad);
@@ -603,7 +670,7 @@ class Program {
         }
     }
 
-    string FormatValue(object value, int index) {
+    string FormatValue(IStackEntry value, int index) {
         var group = _format switch {
             DisplayFormat.Hexadecimal => 4,
             DisplayFormat.Decimal => 3,
@@ -613,11 +680,15 @@ class Program {
         };
         if (!_grouping)
             group = 0;
-        var size = GetPadSize(value, _zeropad);
+        var size = GetPadSize(value.Object, _zeropad);
         var sb = new StringBuilder(size * 9 + 8);
-        FormatValueRaw(sb, value, format: _format, sign: _sign, group: group, zeropad: _zeropad, upper: _upper);
+        FormatValueRaw(sb, value.Object, format: _format, sign: _sign, group: group, zeropad: _zeropad, upper: _upper);
         if (_index)
             sb.Insert(0, $"{index,4}  ");
+        if (!string.IsNullOrEmpty(value.Comment)) {
+            sb.Append(" ; ");
+            sb.Append(value.Comment);
+        }
         return sb.ToString();
     }
 
@@ -743,10 +814,6 @@ class Program {
         }
         else {
             var input = _input.ToString();
-            if (_upper)
-                input = input.ToUpperInvariant();
-            else
-                input = input.ToLowerInvariant();
             var pad = Console.WindowWidth - 1;
             Write(input, pad, ellipsis: true);
             Console.SetCursorPosition(Math.Min(input.Length, pad), Console.WindowHeight - 1);
