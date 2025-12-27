@@ -156,7 +156,8 @@ class Program {
                     Stack:
                     Up/Down = rotate stack                   Delete = edit last
                     Shift+Delete = delete last               Ctrl+Delete = clear all
-                    z = extract                              p = display top
+                    z/s = extract/swap                       Shift+Enter = pick
+                    p = display top
 
                     Operators:
                     Shift+Plus/Minus = add/subtract          Alt+Shift+<> = shift (inv. signedness)
@@ -177,8 +178,6 @@ class Program {
             case ConsoleKey.Enter when key.Modifiers == ConsoleModifiers.None:
                 PushInput();
                 break;
-            case ConsoleKey.Enter when key.Modifiers == ConsoleModifiers.Shift:
-                throw new NotImplementedException();
             case ConsoleKey.D when key.Modifiers == ConsoleModifiers.Control:
                 if (_input.Length == 0)
                     _exit = true;
@@ -233,10 +232,10 @@ class Program {
     bool HandleStackKeys(ConsoleKeyInfo key) {
         switch (key.Key) {
             case ConsoleKey.UpArrow when key.Modifiers == ConsoleModifiers.None:
-                _calc.DoStackOp(StackOperation.Rotate, -1);
+                _calc.DoStackOp(StackOperation.Roll, -1);
                 break;
             case ConsoleKey.DownArrow when key.Modifiers == ConsoleModifiers.None:
-                _calc.DoStackOp(StackOperation.Rotate, 1);
+                _calc.DoStackOp(StackOperation.Roll, 1);
                 break;
             case ConsoleKey.Delete when key.Modifiers == ConsoleModifiers.None:
                 if (_input.Length == 0) {
@@ -266,7 +265,7 @@ class Program {
                 break;
             case ConsoleKey.Z when key.Modifiers == ConsoleModifiers.None:
                 if (_input.Length == 0) {
-                    _calc.DoStackOp(StackOperation.Extract, 1);
+                    _calc.DoStackOp(StackOperation.Extract, 2);
                 }
                 else {
                     PushInput(true);
@@ -281,12 +280,27 @@ class Program {
                 break;
             case ConsoleKey.S when key.Modifiers == ConsoleModifiers.None:
                 if (_input.Length == 0) {
-                    _calc.DoStackOp(StackOperation.Swap, 1);
+                    _calc.DoStackOp(StackOperation.Swap, 2);
                 }
                 else {
                     PushInput(true);
                     try {
                         _calc.DoStackOp(StackOperation.Swap, null);
+                    }
+                    catch {
+                        _calc.DoStackOp(StackOperation.Drop, 1);
+                        throw;
+                    }
+                }
+                break;
+            case ConsoleKey.Enter when key.Modifiers == ConsoleModifiers.Shift:
+                if (_input.Length == 0) {
+                    _calc.DoStackOp(StackOperation.Pick, 1);
+                }
+                else {
+                    PushInput(true);
+                    try {
+                        _calc.DoStackOp(StackOperation.Pick, null);
                     }
                     catch {
                         _calc.DoStackOp(StackOperation.Drop, 1);

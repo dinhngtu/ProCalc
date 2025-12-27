@@ -27,9 +27,10 @@ public enum UnaryOperation {
 
 public enum StackOperation {
     Drop,
-    Rotate,
+    Roll,
     Extract,
     Swap,
+    Pick,
     SetComment,
     SwapComment,
 }

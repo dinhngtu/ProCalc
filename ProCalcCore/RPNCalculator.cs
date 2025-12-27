@@ -164,6 +164,14 @@ public class RPNCalculator<T> : IRPNCalculator
         (_stack[-1], _stack[-lifoIndex]) = (_stack[-lifoIndex], _stack[-1]);
     }
 
+    void Pick(int lifoIndex) {
+        _stack.PushFront(new StackEntry<T>() {
+            Value = _stack[-lifoIndex].Value,
+            Comment = null,
+            AltComment = null,
+        });
+    }
+
     void SetComment(int lifoIndex, string? comment) {
         var newValue = _stack[-lifoIndex];
         newValue.AltComment = newValue.Comment;
@@ -194,7 +202,7 @@ public class RPNCalculator<T> : IRPNCalculator
                 case StackOperation.Drop:
                     Drop(val);
                     break;
-                case StackOperation.Rotate:
+                case StackOperation.Roll:
                     Rotate(val);
                     break;
                 case StackOperation.Extract:
@@ -202,6 +210,9 @@ public class RPNCalculator<T> : IRPNCalculator
                     break;
                 case StackOperation.Swap:
                     Swap(val);
+                    break;
+                case StackOperation.Pick:
+                    Pick(val);
                     break;
                 case StackOperation.SetComment:
                     if (input != null)
