@@ -19,7 +19,7 @@ public class RPNCalculator<T> : IRPNCalculator
 
     public int Count => _stack.Count;
 
-    public void Push(object value, string? original, string? comment, string? altComment) {
+    public void Push(object value, string? comment, string? altComment) {
         _stack.PushFront(new StackEntry<T>() {
             Value = IntConverter.ToCalculatorTypeTruncating<T>(value),
             Comment = comment,

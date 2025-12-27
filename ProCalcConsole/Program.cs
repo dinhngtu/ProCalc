@@ -513,14 +513,14 @@ class Program {
         bool isOverrideComment = false;
         if (commentIndex >= 0) {
             _input.Remove(commentIndex, _input.Length - commentIndex);
-            comment = original[(commentIndex + 1)..];
+            comment = original[(commentIndex + 1)..].Trim();
             isOverrideComment = original[commentIndex] == ':';
         }
 
         _input.Replace(" ", null);
         try {
             if (stack) {
-                _calc.Push(Int128.Parse(_input.ToString()), original, comment);
+                _calc.Push(Int128.Parse(_input.ToString()), comment);
             }
             else {
                 var realFormat = _format;
@@ -587,9 +587,9 @@ class Program {
                     _ => throw new NotImplementedException(),
                 };
                 if (negative)
-                    _calc.Push(Int128.CreateTruncating(-raw), original, comment);
+                    _calc.Push(Int128.CreateTruncating(-raw), comment);
                 else
-                    _calc.Push(Int128.CreateTruncating(raw), original, comment);
+                    _calc.Push(Int128.CreateTruncating(raw), comment);
             }
 
             if (isOverrideComment) {

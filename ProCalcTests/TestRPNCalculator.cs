@@ -4,13 +4,13 @@ namespace ProCalcTests;
 
 public class TestRPNCalculator {
     static void Push(RPNCalculator<int> calc, int value) {
-        calc.Push(value, null, null, null);
+        calc.Push(value, null, null);
     }
 
     [Fact]
     public void TestPushAndPeek() {
         var calc = new RPNCalculator<int>();
-        calc.Push(42, "42", null, null);
+        Push(calc, 42);
         var top = calc.Peek();
         Assert.Equal(42, (int)top.Object);
     }
@@ -157,7 +157,7 @@ public class TestRPNCalculator {
         var calc = new RPNCalculator<int>();
         Push(calc, 1); // Index 2 after pop
         Push(calc, 2); // Index 1 after pop
-        calc.Push(2, "2", "new comment", null); // Top, value 2
+        calc.Push(2, "new comment", null); // Top, value 2
 
         calc.DoStackOp(StackOperation.SetComment, null);
 
@@ -172,7 +172,7 @@ public class TestRPNCalculator {
     [Fact]
     public void TestStackSwapComment() {
         var calc = new RPNCalculator<int>();
-        calc.Push(1, "1", "A", "B");
+        calc.Push(1, "A", "B");
         calc.DoStackOp(StackOperation.SwapComment, 1);
         var entry = calc.Peek();
         Assert.Equal("B", entry.Comment);
@@ -182,7 +182,7 @@ public class TestRPNCalculator {
     [Fact]
     public void TestConversionSignExtend() {
         var calc8 = new RPNCalculator<sbyte>();
-        calc8.Push(-1, "-1", null, null); // 0xFF
+        calc8.Push(-1, null, null); // 0xFF
 
         var calc32 = calc8.Into<int>(signExtend: true);
         Assert.Equal(-1, (int)calc32.Peek().Object);
@@ -192,7 +192,7 @@ public class TestRPNCalculator {
     [Fact]
     public void TestConversionZeroExtend() {
         var calc8 = new RPNCalculator<sbyte>();
-        calc8.Push(-1, "-1", null, null); // 0xFF
+        calc8.Push(-1, null, null); // 0xFF
 
         var calc32 = calc8.Into<int>(signExtend: false);
         Assert.Equal(255, (int)calc32.Peek().Object);
@@ -202,7 +202,7 @@ public class TestRPNCalculator {
     [Fact]
     public void TestConversionTruncate() {
         var calc32 = new RPNCalculator<int>();
-        calc32.Push(0x12345678, "0x12345678", null, null);
+        calc32.Push(0x12345678, null, null);
 
         var calc8 = calc32.Into<sbyte>(signExtend: true);
         Assert.Equal(0x78, (sbyte)calc8.Peek().Object);

@@ -3,7 +3,7 @@ namespace ProCalcCore;
 public interface IRPNCalculator {
     int WordBytes { get; }
     int Count { get; }
-    void Push(object value, string? original = null, string? comment = null, string? altComment = null);
+    void Push(object value, string? comment = null, string? altComment = null);
     void Push(IStackEntry entry);
     IStackEntry Peek();
     void Clear();
