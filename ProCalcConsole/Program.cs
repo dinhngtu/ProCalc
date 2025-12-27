@@ -137,7 +137,7 @@ class Program {
             case ConsoleKey.D1 when key.Modifiers == ConsoleModifiers.Control:
                 _upper = !_upper;
                 break;
-            case ConsoleKey.D1 when key.Modifiers == ConsoleModifiers.Control:
+            case ConsoleKey.D2 when key.Modifiers == ConsoleModifiers.Control:
                 _index = !_index;
                 break;
             case ConsoleKey.F1 when key.Modifiers == ConsoleModifiers.None:
