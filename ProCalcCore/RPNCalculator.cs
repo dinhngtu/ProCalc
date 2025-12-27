@@ -8,14 +8,6 @@ public class RPNCalculator<T> : IRPNCalculator
 
     public RPNCalculator() { }
 
-    public RPNCalculator(IEnumerable<T> values) {
-        foreach (var value in values) {
-            _stack.PushFront(new StackEntry<T>() {
-                Value = value,
-            });
-        }
-    }
-
     internal RPNCalculator(IEnumerable<StackEntry<T>> values) {
         foreach (var value in values) {
             _stack.PushFront(value);

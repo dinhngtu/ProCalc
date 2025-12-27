@@ -145,12 +145,12 @@ class Program {
                 Console.WriteLine("""
                     Mode:
                     F5-F8 = hex/dec/oct/bin                  F2 = toggle signed/unsigned
-                    F3/F4 = reduce/increase word size        Shift+F4 = extend (inverted behavior)
+                    F3/F4 = reduce/increase word size        Shift+F4 = extend (inv. signedness)
                     Ctrl+9 = toggle digit grouping           Ctrl+0 = toggle zero pad
                     Ctrl+1 = toggle upper/lowercase hex      Ctrl+2 = print index
 
                     Commenting:
-                    Append `;` as comment                    Use `index:comment` to set comment
+                    Append `;` to add a comment              Use `index:comment` to set comment
                     " = swap comment of index
 
                     Stack:
@@ -159,7 +159,7 @@ class Program {
                     z = extract                              p = display top
 
                     Operators:
-                    Shift+Plus/Minus = add/subtract          Alt+Shift+<> = arithmetic shift
+                    Shift+Plus/Minus = add/subtract          Alt+Shift+<> = shift (inv. signedness)
                     {} = rotate left/right                   () = mask left/right
                     Alt+() = count leading/trailing zeroes   $ = popcount
 
@@ -344,13 +344,16 @@ class Program {
                 _calc.DoBinaryOp(BinaryOperation.ShiftLeft);
                 break;
             case ConsoleKey.OemPeriod when key.Modifiers == ConsoleModifiers.Shift:
-            case ConsoleKey.OemPeriod when key.Modifiers == (ConsoleModifiers.Shift | ConsoleModifiers.Alt):
-                PushInput();
-                if (key.Modifiers.HasFlag(ConsoleModifiers.Alt))
-                    _calc.DoBinaryOp(BinaryOperation.ShiftRightArithmetic);
-                else
-                    _calc.DoBinaryOp(BinaryOperation.ShiftRight);
-                break;
+            case ConsoleKey.OemPeriod when key.Modifiers == (ConsoleModifiers.Shift | ConsoleModifiers.Alt): {
+                    var alt = key.Modifiers.HasFlag(ConsoleModifiers.Alt);
+                    var signExtend = (_sign == DisplaySignedness.Signed) ^ alt;
+                    PushInput();
+                    if (signExtend)
+                        _calc.DoBinaryOp(BinaryOperation.ShiftRightArithmetic);
+                    else
+                        _calc.DoBinaryOp(BinaryOperation.ShiftRight);
+                    break;
+                }
             case ConsoleKey.Oem4 when key.Modifiers == ConsoleModifiers.Shift:
                 PushInput();
                 _calc.DoBinaryOp(BinaryOperation.RotateLeft);
