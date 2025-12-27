@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="ProCalcConsole/ProCalcConsole.csproj" />
+  <Project Path="ProCalcCore/ProCalcCore.csproj" />
+</Solution>
