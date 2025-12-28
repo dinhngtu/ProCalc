@@ -20,7 +20,7 @@ public enum UnaryOperation {
     Not,
     MaskLeft,
     MaskRight,
-    Popcount,
+    PopCount,
     CountLeadingZeroes,
     CountTrailingZeroes,
 }

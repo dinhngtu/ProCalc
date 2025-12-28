@@ -109,7 +109,7 @@ public class TestRPNCalculator {
         Push(calc, 3);
         // Stack: [3, 2, 1] (top to bottom)
         calc.DoStackOp(StackOperation.Roll, 1);
-        // Roll(1) -> Rotate(1) -> PopFront(3) and PushBack(3)
+        // Roll(1) -> Roll(1) -> PopFront(3) and PushBack(3)
         // Stack: [2, 1, 3]
         Assert.Equal(2, (int)calc.Peek().Object);
         calc.DoStackOp(StackOperation.Drop, 1);
@@ -124,7 +124,7 @@ public class TestRPNCalculator {
         Push(calc, 3);
         // Stack: [3, 2, 1]
         calc.DoStackOp(StackOperation.Roll, -1);
-        // Roll(-1) -> Rotate(-1) -> PopBack(1) and PushFront(1)
+        // Roll(-1) -> Roll(-1) -> PopBack(1) and PushFront(1)
         // Stack: [1, 3, 2]
         Assert.Equal(1, (int)calc.Peek().Object);
     }
@@ -228,7 +228,7 @@ public class TestRPNCalculator {
 
         // PopCount
         calc.Push(0b11110000, null, null);
-        calc.DoUnaryOp(UnaryOperation.Popcount);
+        calc.DoUnaryOp(UnaryOperation.PopCount);
         Assert.Equal(4, (int)calc.Peek().Object);
         calc.Clear();
 

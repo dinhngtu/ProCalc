@@ -4,18 +4,22 @@ namespace ProCalcCore;
 
 public class RPNCalculator<T> : IRPNCalculator
     where T : struct, IBinaryInteger<T>, IMinMaxValue<T> {
-    readonly Deque<StackEntry<T>> _stack = new(256);
+    public const int DefaultCapacity = 256;
 
-    public RPNCalculator() { }
+    readonly Deque<StackEntry<T>> _stack;
 
-    internal RPNCalculator(IEnumerable<StackEntry<T>> values) {
+    public RPNCalculator(int capacity = DefaultCapacity) {
+        _stack = new(capacity);
+    }
+
+    internal RPNCalculator(IEnumerable<StackEntry<T>> values, int capacity = DefaultCapacity) {
+        _stack = new(capacity);
         foreach (var value in values) {
             _stack.PushFront(value);
         }
     }
 
     public int WordBytes => T.Zero.GetByteCount();
-    int WordBits => WordBytes * 8;
 
     public int Count => _stack.Count;
 
@@ -85,7 +89,7 @@ public class RPNCalculator<T> : IRPNCalculator
     }
 
     T MaskLeft(int val) {
-        return ((T.One << val) - T.One) << (WordBits - val);
+        return ((T.One << val) - T.One) << (WordBytes * 8 - val);
     }
 
     T MaskRight(int val) {
@@ -104,7 +108,7 @@ public class RPNCalculator<T> : IRPNCalculator
                 UnaryOperation.Not => ~val.Value,
                 UnaryOperation.MaskLeft => MaskLeft(int.CreateChecked(val.Value)),
                 UnaryOperation.MaskRight => MaskRight(int.CreateChecked(val.Value)),
-                UnaryOperation.Popcount => T.PopCount(val.Value),
+                UnaryOperation.PopCount => T.PopCount(val.Value),
                 UnaryOperation.CountLeadingZeroes => T.LeadingZeroCount(val.Value),
                 UnaryOperation.CountTrailingZeroes => T.TrailingZeroCount(val.Value),
                 _ => throw new NotSupportedException(nameof(op)),
@@ -127,7 +131,7 @@ public class RPNCalculator<T> : IRPNCalculator
             _stack.PopFront();
     }
 
-    void Rotate(int count) {
+    void Roll(int count) {
         if (_stack.Count < 2)
             return;
 
@@ -203,7 +207,7 @@ public class RPNCalculator<T> : IRPNCalculator
                     Drop(val);
                     break;
                 case StackOperation.Roll:
-                    Rotate(val);
+                    Roll(val);
                     break;
                 case StackOperation.Extract:
                     Extract(val);
@@ -242,13 +246,13 @@ public class RPNCalculator<T> : IRPNCalculator
                 Value = U.CreateTruncating(x.Value),
                 Comment = x.Comment,
                 AltComment = x.AltComment,
-            }));
+            }), _stack.Capacity);
         else
             return new RPNCalculator<U>(_stack.Select(x => new StackEntry<U>() {
                 Value = IntConverter.ToCalculatorTypeUnsigned<T, U>(x.Value),
                 Comment = x.Comment,
                 AltComment = x.AltComment,
-            }));
+            }), _stack.Capacity);
     }
 
     public IRPNCalculator ConvertTo(Type type, bool signExtend) {

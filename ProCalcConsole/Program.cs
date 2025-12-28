@@ -390,7 +390,7 @@ class Program {
                 break;
             case ConsoleKey.D4 when key.Modifiers == ConsoleModifiers.Shift:
                 PushInput();
-                _calc.DoUnaryOp(UnaryOperation.Popcount);
+                _calc.DoUnaryOp(UnaryOperation.PopCount);
                 break;
             case ConsoleKey.D9 when key.Modifiers == (ConsoleModifiers.Shift | ConsoleModifiers.Alt):
                 PushInput();
@@ -520,12 +520,15 @@ class Program {
         _input.Replace(" ", null);
         try {
             if (stack) {
-                _calc.Push(Int128.Parse(_input.ToString()), comment);
+                _calc.Push(Int128.Parse(_input.ToString()), comment, null);
             }
             else {
                 var realFormat = _format;
                 var explicitFormat = false;
                 var negative = false;
+
+                if (_input.Length == 0)
+                    throw new ArgumentException("Found a comment but input is empty");
                 if (_input[0] == '-') {
                     negative = true;
                     _input.Remove(0, 1);
@@ -587,9 +590,9 @@ class Program {
                     _ => throw new NotImplementedException(),
                 };
                 if (negative)
-                    _calc.Push(Int128.CreateTruncating(-raw), comment);
+                    _calc.Push(Int128.CreateTruncating(-raw), comment, null);
                 else
-                    _calc.Push(Int128.CreateTruncating(raw), comment);
+                    _calc.Push(Int128.CreateTruncating(raw), comment, null);
             }
 
             if (isOverrideComment) {
@@ -626,7 +629,7 @@ class Program {
         }
     }
 
-    int GetPadSize(object value, bool zeropad) {
+    int GetPadSize(bool zeropad) {
         if (!zeropad) return 0;
         return _calc.WordBytes;
     }
@@ -635,7 +638,7 @@ class Program {
         StringBuilder sb,
         object value,
         bool zeropad) {
-        var size = GetPadSize(value, true);
+        var size = GetPadSize(true);
 
         var val = IntConverter.ToUInt128(value);
         var pad = (size * 8 + 2) / 3;
@@ -660,7 +663,7 @@ class Program {
             FormatOctalRaw(sb, value, zeropad: zeropad);
         }
         else {
-            var size = GetPadSize(value, zeropad);
+            var size = GetPadSize(zeropad);
 
             if (sign == DisplaySignedness.Unsigned)
                 value = IntConverter.ToUInt128(value);
@@ -697,12 +700,19 @@ class Program {
         };
         if (!_grouping)
             group = 0;
-        var size = GetPadSize(value.Object, _zeropad);
+        var size = GetPadSize(_zeropad);
         var sb = new StringBuilder(size * 9 + 8);
-        FormatValueRaw(sb, value.Object, format: _format, sign: _sign, group: group, zeropad: _zeropad, upper: _upper);
+        FormatValueRaw(
+            sb,
+            value.Object,
+            format: _format,
+            sign: _sign,
+            group: group,
+            zeropad: _zeropad,
+            upper: _upper);
         if (_index)
             sb.Insert(0, $"{index,4}  ");
-        if (!string.IsNullOrEmpty(value.Comment)) {
+        if (value.Comment != null) {
             sb.Append(" ; ");
             sb.Append(value.Comment);
         }
@@ -753,7 +763,6 @@ class Program {
     }
 
     void PrintValue(object value) {
-        var size = GetPadSize(value, _zeropad);
         var sb = new StringBuilder(1024);
 
         Console.Clear();
