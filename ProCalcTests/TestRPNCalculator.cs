@@ -2,6 +2,12 @@ using ProCalcCore;
 
 namespace ProCalcTests;
 
+class MockStackEntry : IStackEntry {
+    public required object Object { get; set; }
+    public string? Comment { get; set; }
+    public string? AltComment { get; set; }
+}
+
 public class TestRPNCalculator {
     static void Push(RPNCalculator<int> calc, int value) {
         calc.Push(value, null, null);
@@ -201,10 +207,101 @@ public class TestRPNCalculator {
 
     [Fact]
     public void TestConversionTruncate() {
-        var calc32 = new RPNCalculator<int>();
-        calc32.Push(0x12345678, null, null);
+        var calc = new RPNCalculator<long>();
+        calc.Push(0x1_0000_0000L, null, null); // Larger than int
 
-        var calc8 = calc32.Into<sbyte>(signExtend: true);
-        Assert.Equal(0x78, (sbyte)calc8.Peek().Object);
+        var converted = (RPNCalculator<int>)calc.ConvertTo(typeof(int), false);
+        var res = converted.Peek();
+
+        Assert.Equal(0, (int)res.Object);
+    }
+
+    [Fact]
+    public void TestUnaryOpsCoverage() {
+        var calc = new RPNCalculator<int>();
+        calc.Push(0b11110000, null, null);
+
+        // Not
+        calc.DoUnaryOp(UnaryOperation.Not);
+        Assert.Equal(~0b11110000, (int)calc.Peek().Object);
+        calc.Clear();
+
+        // PopCount
+        calc.Push(0b11110000, null, null);
+        calc.DoUnaryOp(UnaryOperation.Popcount);
+        Assert.Equal(4, (int)calc.Peek().Object);
+        calc.Clear();
+
+        // CountLeadingZeroes
+        calc.Push(0xF0, null, null);
+        calc.DoUnaryOp(UnaryOperation.CountLeadingZeroes);
+        Assert.Equal(24, (int)calc.Peek().Object);
+        calc.Clear();
+
+        // CountTrailingZeroes
+        calc.Push(0xF0, null, null);
+        calc.DoUnaryOp(UnaryOperation.CountTrailingZeroes);
+        Assert.Equal(4, (int)calc.Peek().Object);
+        calc.Clear();
+
+        // MaskLeft(1) -> 0x80000000
+        calc.Push(1, null, null);
+        calc.DoUnaryOp(UnaryOperation.MaskLeft);
+        Assert.Equal(int.MinValue, (int)calc.Peek().Object);
+        calc.Clear();
+
+        // MaskRight(1) -> 1
+        calc.Push(1, null, null);
+        calc.DoUnaryOp(UnaryOperation.MaskRight);
+        Assert.Equal(1, (int)calc.Peek().Object);
+    }
+
+    [Fact]
+    public void TestExceptionSafety() {
+        // Binary Op Exception (Divide by Zero)
+        var calc = new RPNCalculator<int>();
+        calc.Push(10, null, null);
+        calc.Push(0, null, null);
+        Assert.ThrowsAny<Exception>(() => calc.DoBinaryOp(BinaryOperation.Divide));
+        // Verify stack restored
+        Assert.Equal(0, (int)calc.Peek().Object);
+        calc.DoStackOp(StackOperation.Drop, 1);
+        Assert.Equal(10, (int)calc.Peek().Object);
+
+        // Unary Op Exception (Overflow in arg conversion)
+        var calc128 = new RPNCalculator<Int128>();
+        calc128.Push(Int128.MaxValue, null, null);
+        Assert.ThrowsAny<Exception>(() => calc128.DoUnaryOp(UnaryOperation.MaskLeft));
+        // Verify stack restored
+        Assert.Equal(Int128.MaxValue, (Int128)calc128.Peek().Object);
+
+        // Stack Op Exception (Extract out of range)
+        calc.Clear();
+        calc.Push(100, null, null);
+        Assert.ThrowsAny<Exception>(() => calc.DoStackOp(StackOperation.Extract, null));
+        // Verify stack restored
+        Assert.Equal(100, (int)calc.Peek().Object);
+    }
+
+    [Fact]
+    public void TestConvertToException() {
+        var calc = new RPNCalculator<int>();
+        Assert.ThrowsAny<Exception>(() => calc.ConvertTo(typeof(float), false));
+    }
+
+    [Fact]
+    public void TestPushInterface() {
+        var calc = new RPNCalculator<int>();
+        IStackEntry entry = new MockStackEntry { Object = 42, Comment = "c", AltComment = "ac" };
+        calc.Push(entry);
+        var top = calc.Peek();
+        Assert.Equal(42, (int)top.Object);
+        Assert.Equal("c", top.Comment);
+    }
+
+    [Fact]
+    public void TestPeekEmpty() {
+        var calc = new RPNCalculator<int>();
+        Assert.ThrowsAny<Exception>(() => calc.Peek());
     }
 }
