@@ -4,14 +4,6 @@ using System.Globalization;
 using System.Text;
 
 class Program {
-    static void Main() {
-        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
-        CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
-
-        var program = new Program();
-        program.DoMain();
-    }
-
     IRPNCalculator _calc = new RPNCalculator<long>();
     DisplayFormat _format = DisplayFormat.Hexadecimal;
     DisplaySignedness _sign = DisplaySignedness.Unsigned;
@@ -24,6 +16,28 @@ class Program {
     readonly StringBuilder _input = new();
     bool _comment = false;
     bool _exit = false;
+
+    static void Main(string[] args) {
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+        CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+
+        var program = new Program();
+        foreach (var arg in args) {
+            if ("-hex".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                program._format = DisplayFormat.Hexadecimal;
+            }
+            else if ("-dec".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                program._format = DisplayFormat.Decimal;
+            }
+            else if ("-oct".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                program._format = DisplayFormat.Octal;
+            }
+            else if ("-bin".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                program._format = DisplayFormat.Binary;
+            }
+        }
+        program.DoMain();
+    }
 
     void DoMain() {
         Console.TreatControlCAsInput = true;
