@@ -859,9 +859,13 @@ class Program {
                     throw;
                 }
             }
-        }
-        finally {
             ResetInput();
+        }
+        catch {
+            _input.Clear();
+            _input.Append(original);
+            _inputCursor = _input.Length;
+            throw;
         }
     }
 
@@ -910,6 +914,32 @@ class Program {
                 sb.Remove(begin, 1);
     }
 
+    void ApplyGrouping(StringBuilder sb, int groupSize) {
+        if (groupSize <= 0 || sb.Length <= groupSize) return;
+
+        int start = (sb.Length > 0 && sb[0] == '-') ? 1 : 0;
+        int contentLen = sb.Length - start;
+        int separators = (contentLen - 1) / groupSize;
+        if (separators <= 0) return;
+
+        int oldLen = sb.Length;
+        int newLen = oldLen + separators;
+        sb.Length = newLen;
+
+        int readPtr = oldLen - 1;
+        int writePtr = newLen - 1;
+        int count = 0;
+
+        while (readPtr >= start) {
+            sb[writePtr--] = sb[readPtr--];
+            count++;
+            if (count == groupSize && readPtr >= start) {
+                sb[writePtr--] = ' ';
+                count = 0;
+            }
+        }
+    }
+
     void FormatValueRaw(
         StringBuilder sb,
         object value,
@@ -936,18 +966,8 @@ class Program {
             }, value);
         }
 
-        if (group > 0) {
-            group = format switch {
-                DisplayFormat.Hexadecimal => 4,
-                DisplayFormat.Decimal => 3,
-                DisplayFormat.Octal => 3,
-                DisplayFormat.Binary => 4,
-                _ => throw new InvalidOperationException(),
-            };
-            for (int i = 0; i < sb.Length; i++)
-                if ((i + 1) % (group + 1) == 0 && (i != sb.Length - 1 || sb[0] != '-'))
-                    sb.Insert(sb.Length - i, ' ');
-        }
+        if (group > 0)
+            ApplyGrouping(sb, group);
     }
 
     void FormatValue(StringBuilder sb, IStackEntry value) {
@@ -974,6 +994,18 @@ class Program {
         }
     }
 
+    void FormatBinaryFancyRow(StringBuilder sb, UInt128 val, int startBit, int count) {
+        for (int i = count - 1; i >= 0; i--) {
+            sb.Append(((val >> (startBit + i)) & 1) != 0 ? '1' : '0');
+            sb.Append(' ');
+            if (i % 4 == 0) {
+                sb.Append(' ');
+                if (i % 8 == 0)
+                    sb.Append("  ");
+            }
+        }
+    }
+
     void FormatBinaryFancy(StringBuilder sb, object value) {
         var bit = _calc.WordBytes * 8;
         var val = IntConverter.ToUInt128(value);
@@ -981,39 +1013,20 @@ class Program {
         while (bit >= 32) {
             sb.Append($"{bit - 1,-3}          {bit - 8,3}    {bit - 9,-3}          {bit - 16,3}    ");
             sb.Append($"{bit - 17,-3}          {bit - 24,3}    {bit - 25,-3}          {bit - 32,3}\n");
-            sb.AppendFormat("{0:B32}", (val >> (bit - 32)) & (UInt128)0xffffffffu);
-            for (int i = 31; i >= 0; i--)
-                sb.Insert(sb.Length - i, ' ');
-            for (int i = 64 - 8; i >= 0; i -= 8)
-                sb.Insert(sb.Length - i, ' ');
-            for (int i = 72 - 18; i >= 0; i -= 18)
-                sb.Insert(sb.Length - i, "  ");
-            sb.Append('\n');
-            sb.Append('\n');
+            FormatBinaryFancyRow(sb, val, bit - 32, 32);
+            sb.Append("\n\n");
             bit -= 32;
         }
         if (bit >= 16) {
             sb.Append($"{bit - 1,-3}          {bit - 8,3}    {bit - 9,-3}          {bit - 16,3}\n");
-            sb.AppendFormat("{0:B16}", (val >> (bit - 16)) & (UInt128)0xffffu);
-            for (int i = 15; i >= 0; i--)
-                sb.Insert(sb.Length - i, ' ');
-            for (int i = 32 - 8; i >= 0; i -= 8)
-                sb.Insert(sb.Length - i, ' ');
-            for (int i = 36 - 18; i >= 0; i -= 18)
-                sb.Insert(sb.Length - i, "  ");
-            sb.Append('\n');
-            sb.Append('\n');
+            FormatBinaryFancyRow(sb, val, bit - 16, 16);
+            sb.Append("\n\n");
             bit -= 16;
         }
         if (bit >= 8) {
             sb.Append($"{bit - 1,-3}          {bit - 8,3}\n");
-            sb.AppendFormat("{0:B8}", (val >> (bit - 8)) & (UInt128)0xffu);
-            for (int i = 7; i >= 0; i--)
-                sb.Insert(sb.Length - i, ' ');
-            for (int i = 16 - 8; i >= 0; i -= 8)
-                sb.Insert(sb.Length - i, ' ');
-            sb.Append('\n');
-            sb.Append('\n');
+            FormatBinaryFancyRow(sb, val, bit - 8, 8);
+            sb.Append("\n\n");
         }
     }
 
