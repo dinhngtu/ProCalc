@@ -3,15 +3,6 @@ using ProCalcCore;
 using System.Globalization;
 using System.Text;
 
-[Flags]
-enum RefreshFlags : uint {
-    None = 0,
-    Status = 1,
-    Stack = 2,
-    Input = 4,
-    Screen = uint.MaxValue,
-}
-
 class Program {
     IRPNCalculator _calc = new RPNCalculator<long>();
     DisplayFormat _format = DisplayFormat.Hexadecimal;

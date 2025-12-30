@@ -1,6 +1,6 @@
 namespace ProCalcConsole;
 
-public enum DisplaySignedness {
+enum DisplaySignedness {
     Unsigned,
     Signed,
 }

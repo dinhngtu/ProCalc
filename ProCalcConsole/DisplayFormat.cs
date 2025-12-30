@@ -1,6 +1,6 @@
 namespace ProCalcConsole;
 
-public enum DisplayFormat {
+enum DisplayFormat {
     Hexadecimal,
     Decimal,
     Octal,

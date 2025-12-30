@@ -1,6 +1,6 @@
 namespace ProCalcConsole;
 
-public enum InputTypes {
+enum InputTypes {
     Int8,
     Int16,
     Int32,
