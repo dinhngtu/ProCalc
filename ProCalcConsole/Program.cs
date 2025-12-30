@@ -726,23 +726,27 @@ class Program {
         }
     }
 
-    static bool Write(string text, int pad = -1, bool ellipsis = false) {
-        if (pad < 0)
-            pad = Console.WindowWidth;
-        if (text.Length > pad) {
-            if (ellipsis && pad > 3) {
-                Console.Write("...");
-                Console.Write(text.AsSpan(text.Length - pad + 3, pad - 3));
-            }
-            else {
-                Console.Write(text.AsSpan(0, pad));
-            }
-            return false;
+    static void Write(ReadOnlySpan<char> text, int width = -1, int scroll = 0, int totalLength = -1) {
+        if (width < 0)
+            width = Console.WindowWidth;
+        if (totalLength < 0)
+            totalLength = text.Length;
+
+        var display = new StringBuilder();
+        if (scroll > 0)
+            display.Append('<');
+        display.Append(text);
+        if (totalLength > scroll + text.Length)
+            display.Append('>');
+
+        if (display.Length > width) {
+            display.Remove(width - 1, display.Length - width + 1);
+            display.Append('>');
         }
         else {
-            Console.Write(text.PadRight(pad));
-            return true;
+            display.Append(' ', width - display.Length);
         }
+        Console.Write(display.ToString());
     }
 
     int GetPadSize(bool zeropad) {
@@ -925,6 +929,38 @@ class Program {
             Write(FormatValue(stackItems[stackItems.Count - i - 1], stackItems.Count - i));
     }
 
+    void PrintInputLine() {
+        var inputLineWidth = Console.WindowWidth - 1;
+        var input = _input.ToString();
+        int markerLeft, usableWidth, cursorCol;
+
+        // update _inputScroll to not scroll past the cursor (e.g. when pressing Home)
+        _inputScroll = Math.Min(_inputScroll, _inputCursor);
+
+        while (true) {
+            // check if we need a '<' marker on the left
+            markerLeft = _inputScroll > 0 ? 1 : 0;
+            usableWidth = inputLineWidth - markerLeft;
+            // if there's more text than fits the current window, we need a '>' marker on the right
+            if (input.Length > _inputScroll + usableWidth)
+                usableWidth--;
+
+            var markerRight = (input.Length > _inputScroll + usableWidth) ? 1 : 0;
+
+            // calculate where the cursor will physically appear on screen
+            cursorCol = markerLeft + (_inputCursor - _inputScroll);
+            // if the cursor fits within the bounds (including the potential '>' marker), we're done
+            if (cursorCol < inputLineWidth - markerRight)
+                break;
+            // otherwise, scroll right so the cursor is at the very end of the line
+            _inputScroll = _inputCursor - (inputLineWidth - markerLeft - markerRight - 1);
+        }
+
+        var visible = input.AsSpan(_inputScroll, Math.Min(usableWidth, input.Length - _inputScroll));
+        Write(visible, inputLineWidth, _inputScroll, input.Length);
+        Console.SetCursorPosition(cursorCol, Console.WindowHeight - 1);
+    }
+
     void Refresh(Exception? ex = null) {
         Console.SetCursorPosition(0, 0);
         var mode = _format switch {
@@ -951,20 +987,11 @@ class Program {
 
         Console.SetCursorPosition(0, Console.WindowHeight - 1);
         if (ex != null) {
-            Write(ex.Message, pad: Console.WindowWidth - 1);
+            Write(ex.Message, width: Console.WindowWidth - 1);
             Console.Beep();
         }
         else {
-            int typingWidth = Console.WindowWidth - 1;
-            if (_inputCursor < _inputScroll)
-                _inputScroll = _inputCursor;
-            if (_inputCursor >= _inputScroll + typingWidth)
-                _inputScroll = _inputCursor - typingWidth + 1;
-
-            var input = _input.ToString();
-            var visible = input.Substring(_inputScroll, Math.Min(typingWidth, input.Length - _inputScroll));
-            Write(visible, typingWidth);
-            Console.SetCursorPosition(_inputCursor - _inputScroll, Console.WindowHeight - 1);
+            PrintInputLine();
         }
     }
 }
