@@ -3,6 +3,15 @@ using ProCalcCore;
 using System.Globalization;
 using System.Text;
 
+[Flags]
+enum RefreshFlags : uint {
+    None = 0,
+    Status = 1,
+    Stack = 2,
+    Input = 4,
+    Screen = uint.MaxValue,
+}
+
 class Program {
     IRPNCalculator _calc = new RPNCalculator<long>();
     DisplayFormat _format = DisplayFormat.Hexadecimal;
@@ -48,20 +57,20 @@ class Program {
     void DoMain() {
         Console.TreatControlCAsInput = true;
         _calc.Push(0, null, null);
-        Refresh();
+        Refresh(RefreshFlags.Screen);
         while (!_exit) {
             var key = Console.ReadKey(true);
             try {
-                if (HandleHelpKeys(key) ||
-                    HandleModeKeys(key) ||
-                    HandleEditKeys(key) ||
-                    HandleCommentKeys(key) ||
-                    HandleStackKeys(key) ||
-                    HandleOperators(key) ||
-                    HandleFakeNumpadKeys(key) ||
-                    HandleInputKeys(key) ||
-                    HandleInputKeys2(key)) {
-                    Refresh();
+                if ((HandleHelpKeys(key, out RefreshFlags refreshFlags)) ||
+                    (HandleModeKeys(key, out refreshFlags)) ||
+                    (HandleEditKeys(key, out refreshFlags)) ||
+                    (HandleCommentKeys(key, out refreshFlags)) ||
+                    (HandleStackKeys(key, out refreshFlags)) ||
+                    (HandleOperators(key, out refreshFlags)) ||
+                    (HandleFakeNumpadKeys(key, out refreshFlags)) ||
+                    (HandleInputKeys(key, out refreshFlags)) ||
+                    (HandleInputKeys2(key, out refreshFlags))) {
+                    Refresh(refreshFlags);
                     continue;
                 }
                 throw new NotSupportedException(string.Format(
@@ -72,7 +81,7 @@ class Program {
                     key.Key.ToString()));
             }
             catch (Exception ex) {
-                Refresh(ex);
+                Refresh(RefreshFlags.Screen, ex);
                 continue;
             }
         }
@@ -91,7 +100,7 @@ class Program {
         _comment = false;
     }
 
-    bool HandleHelpKeys(ConsoleKeyInfo key) {
+    bool HandleHelpKeys(ConsoleKeyInfo key, out RefreshFlags flags) {
         switch (key.Key) {
             case ConsoleKey.F1 when key.Modifiers == ConsoleModifiers.None:
                 Console.Clear();
@@ -125,12 +134,15 @@ class Program {
                 Pause();
                 break;
             default:
+                flags = 0;
                 return false;
         }
+        flags = RefreshFlags.Screen;
         return true;
     }
 
-    bool HandleModeKeys(ConsoleKeyInfo key) {
+    bool HandleModeKeys(ConsoleKeyInfo key, out RefreshFlags flags) {
+        flags = 0;
         switch (key.Key) {
             case ConsoleKey.F2 when key.Modifiers == ConsoleModifiers.None:
                 if (_sign == DisplaySignedness.Signed)
@@ -207,52 +219,70 @@ class Program {
             default:
                 return false;
         }
+        if (flags == 0)
+            flags = RefreshFlags.Status | RefreshFlags.Stack;
         return true;
     }
 
-    bool HandleEditKeys(ConsoleKeyInfo key) {
+    bool HandleEditKeys(ConsoleKeyInfo key, out RefreshFlags flags) {
         switch (key.Key) {
             case ConsoleKey.Enter when key.Modifiers == ConsoleModifiers.None:
                 PushInput();
+                flags = RefreshFlags.Stack | RefreshFlags.Input;
                 break;
             case ConsoleKey.D when key.Modifiers == ConsoleModifiers.Control:
                 if (_input.Length == 0)
                     _exit = true;
+                flags = 0;
                 break;
             case ConsoleKey.L when key.Modifiers == ConsoleModifiers.Control:
+                flags = RefreshFlags.Screen;
                 break;
             case ConsoleKey.Backspace when key.Modifiers == ConsoleModifiers.None:
                 if (_inputCursor > 0)
                     _input.Remove(--_inputCursor, 1);
+                flags = RefreshFlags.Input;
                 break;
             case ConsoleKey.Delete when key.Modifiers == ConsoleModifiers.None:
-                if (_input.Length > 0 && _inputCursor < _input.Length)
+                if (_input.Length > 0 && _inputCursor < _input.Length) {
                     _input.Remove(_inputCursor, 1);
-                else
+                    flags = RefreshFlags.Input;
+                    break;
+                }
+                else {
+                    flags = 0;
                     return false;
-                break;
+                }
             case ConsoleKey.LeftArrow when key.Modifiers == ConsoleModifiers.None:
-                if (_inputCursor > 0) _inputCursor--;
+                if (_inputCursor > 0)
+                    _inputCursor--;
+                flags = RefreshFlags.Input;
                 break;
             case ConsoleKey.RightArrow when key.Modifiers == ConsoleModifiers.None:
-                if (_inputCursor < _input.Length) _inputCursor++;
+                if (_inputCursor < _input.Length)
+                    _inputCursor++;
+                flags = RefreshFlags.Input;
                 break;
             case ConsoleKey.Home when key.Modifiers == ConsoleModifiers.None:
                 _inputCursor = 0;
+                flags = RefreshFlags.Input;
                 break;
             case ConsoleKey.End when key.Modifiers == ConsoleModifiers.None:
                 _inputCursor = _input.Length;
+                flags = RefreshFlags.Input;
                 break;
             case ConsoleKey.Escape when key.Modifiers == ConsoleModifiers.None:
                 ResetInput();
+                flags = RefreshFlags.Input;
                 break;
             default:
+                flags = 0;
                 return false;
         }
         return true;
     }
 
-    bool HandleCommentKeys(ConsoleKeyInfo key) {
+    bool HandleCommentKeys(ConsoleKeyInfo key, out RefreshFlags flags) {
         switch (key.Key) {
             case ConsoleKey.Oem7 when key.Modifiers == ConsoleModifiers.Shift:
                 if (_input.Length == 0) {
@@ -268,23 +298,26 @@ class Program {
                         throw;
                     }
                 }
+                flags = RefreshFlags.Stack | RefreshFlags.Input;
                 return true;
             default:
                 break;
         }
 
-        if (!_comment) {
+        flags = 0;
+        if (!_comment)
             return false;
-        }
         if (key.KeyChar == '\0')
             return false;
         if (key.Modifiers != ConsoleModifiers.None && key.Modifiers != ConsoleModifiers.Shift)
             return false;
         _input.Insert(_inputCursor++, key.KeyChar);
+        flags = RefreshFlags.Input;
         return true;
     }
 
-    bool HandleStackKeys(ConsoleKeyInfo key) {
+    bool HandleStackKeys(ConsoleKeyInfo key, out RefreshFlags flags) {
+        flags = 0;
         switch (key.Key) {
             case ConsoleKey.UpArrow when key.Modifiers == ConsoleModifiers.None:
                 _calc.DoStackOp(StackOperation.Roll, -1);
@@ -380,14 +413,18 @@ class Program {
             case ConsoleKey.P when key.Modifiers == ConsoleModifiers.None:
                 var val = _calc.Peek();
                 PrintValue(val.Object);
+                flags = RefreshFlags.Screen;
                 break;
             default:
                 return false;
         }
+        if (flags == 0)
+            flags = RefreshFlags.Stack | RefreshFlags.Input;
         return true;
     }
 
-    bool HandleOperators(ConsoleKeyInfo key) {
+    bool HandleOperators(ConsoleKeyInfo key, out RefreshFlags flags) {
+        flags = 0;
         switch (key.Key) {
             case ConsoleKey.OemPlus when key.Modifiers == ConsoleModifiers.Shift:
             case ConsoleKey.Add:
@@ -482,12 +519,16 @@ class Program {
                 _calc.DoUnaryOp(UnaryOperation.CountTrailingZeroes);
                 break;
             default:
+                flags = 0;
                 return false;
         }
+        if (flags == 0)
+            flags = RefreshFlags.Stack | RefreshFlags.Input;
         return true;
     }
 
-    bool HandleFakeNumpadKeys(ConsoleKeyInfo key) {
+    bool HandleFakeNumpadKeys(ConsoleKeyInfo key, out RefreshFlags flags) {
+        flags = 0;
         if (!_fakeNumpad || key.Modifiers != ConsoleModifiers.None)
             return false;
         switch (key.Key) {
@@ -519,10 +560,13 @@ class Program {
             default:
                 return false;
         }
+        if (flags == 0)
+            flags = RefreshFlags.Input;
         return true;
     }
 
-    bool HandleInputKeys(ConsoleKeyInfo key) {
+    bool HandleInputKeys(ConsoleKeyInfo key, out RefreshFlags flags) {
+        flags = 0;
         if (key.Modifiers != ConsoleModifiers.None && key.Modifiers != ConsoleModifiers.Shift)
             return false;
         switch (key.Key) {
@@ -550,10 +594,13 @@ class Program {
             default:
                 return false;
         }
+        if (flags == 0)
+            flags = RefreshFlags.Input;
         return true;
     }
 
-    bool HandleInputKeys2(ConsoleKeyInfo key) {
+    bool HandleInputKeys2(ConsoleKeyInfo key, out RefreshFlags flags) {
+        flags = 0;
         if (key.Modifiers != ConsoleModifiers.None)
             return false;
         switch (key.Key) {
@@ -603,6 +650,8 @@ class Program {
             default:
                 return false;
         }
+        if (flags == 0)
+            flags = RefreshFlags.Input;
         return true;
     }
 
@@ -726,7 +775,7 @@ class Program {
         }
     }
 
-    static void Write(ReadOnlySpan<char> text, int width = -1, int scroll = 0, int totalLength = -1) {
+    void Write(ReadOnlySpan<char> text, int width = -1, int scroll = 0, int totalLength = -1) {
         if (width < 0)
             width = Console.WindowWidth;
         if (totalLength < 0)
@@ -961,37 +1010,50 @@ class Program {
         Console.SetCursorPosition(cursorCol, Console.WindowHeight - 1);
     }
 
-    void Refresh(Exception? ex = null) {
-        Console.SetCursorPosition(0, 0);
-        var mode = _format switch {
-            DisplayFormat.Hexadecimal => "*Hex* F6   F7   F8  ",
-            DisplayFormat.Decimal => " F5  *Dec* F7   F8  ",
-            DisplayFormat.Octal => " F5   F6  *Oct* F8  ",
-            DisplayFormat.Binary => " F5   F6   F7  *Bin*",
-            _ => throw new Exception("Unexpected format"),
-        };
-        Write(string.Format(
-            "{0}  (F2) {1}{2,-6} (F3/F4)  {3,7} {4,4} {5} (Ctrl+9/0/1)",
-            mode,
-            _sign == DisplaySignedness.Signed ? "S" : "U",
-            _type,
-            _grouping ? "Group" : "Ungroup",
-            _zeropad ? "Pad" : "Left",
-            _upper ? "Upper" : "Lower"));
+    void Refresh(RefreshFlags flags, Exception? ex = null) {
+        try {
+            Console.CursorVisible = false;
 
-        PrintStack(_calc);
+            if (flags.HasFlag(RefreshFlags.Status)) {
+                Console.SetCursorPosition(0, 0);
+                var mode = _format switch {
+                    DisplayFormat.Hexadecimal => "*Hex* F6   F7   F8  ",
+                    DisplayFormat.Decimal => " F5  *Dec* F7   F8  ",
+                    DisplayFormat.Octal => " F5   F6  *Oct* F8  ",
+                    DisplayFormat.Binary => " F5   F6   F7  *Bin*",
+                    _ => throw new Exception("Unexpected format"),
+                };
+                Write(string.Format(
+                    "{0}  (F2) {1}{2,-6} (F3/F4)  {3,7} {4,4} {5} (Ctrl+9/0/1)",
+                    mode,
+                    _sign == DisplaySignedness.Signed ? "S" : "U",
+                    _type,
+                    _grouping ? "Group" : "Ungroup",
+                    _zeropad ? "Pad" : "Left",
+                    _upper ? "Upper" : "Lower"));
+            }
 
-        while (Console.CursorTop < Console.WindowHeight - 1) {
-            Write("");
+            if (flags.HasFlag(RefreshFlags.Stack)) {
+                Console.SetCursorPosition(0, 1);
+                PrintStack(_calc);
+
+                while (Console.CursorTop < Console.WindowHeight - 1)
+                    Write("");
+            }
+
+            if (flags.HasFlag(RefreshFlags.Input)) {
+                Console.SetCursorPosition(0, Console.WindowHeight - 1);
+                if (ex != null) {
+                    Write(ex.Message, width: Console.WindowWidth - 1);
+                    Console.Beep();
+                }
+                else {
+                    PrintInputLine();
+                }
+            }
         }
-
-        Console.SetCursorPosition(0, Console.WindowHeight - 1);
-        if (ex != null) {
-            Write(ex.Message, width: Console.WindowWidth - 1);
-            Console.Beep();
-        }
-        else {
-            PrintInputLine();
+        finally {
+            Console.CursorVisible = true;
         }
     }
 }
