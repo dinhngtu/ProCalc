@@ -14,6 +14,7 @@ class Program {
     bool _index = true;
 
     readonly StringBuilder _input = new();
+    bool _fakeNumpad = false;
     bool _comment = false;
     bool _exit = false;
 
@@ -35,6 +36,9 @@ class Program {
             else if ("-bin".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 program._format = DisplayFormat.Binary;
             }
+            else if ("-numpad".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                program._fakeNumpad = true;
+            }
         }
         program.DoMain();
     }
@@ -52,6 +56,7 @@ class Program {
                     HandleCommentKeys(key) ||
                     HandleStackKeys(key) ||
                     HandleOperators(key) ||
+                    HandleFakeNumpadKeys(key) ||
                     HandleInputKeys(key) ||
                     HandleInputKeys2(key)) {
                     Refresh();
@@ -108,6 +113,9 @@ class Program {
                     Alt+Shift+</> = shift (inv. signedness)  Shift+[/] = rotate left/right
                     Shift+9/0 = mask left/right              Alt+Shift+9/0 = count lead/trail 0s
                     Shift+3/Alt+Shift+3 = align up/down      Shift+4 = popcount
+
+                    Command line:
+                    -hex/-dec/-oct/-bin = set initial base   -numpad = enable UIOJKLM, numpad (M=00)
 
                     """);
                 Pause();
@@ -346,18 +354,22 @@ class Program {
     bool HandleOperators(ConsoleKeyInfo key) {
         switch (key.Key) {
             case ConsoleKey.OemPlus when key.Modifiers == ConsoleModifiers.Shift:
+            case ConsoleKey.Add:
                 PushInput();
                 _calc.DoBinaryOp(BinaryOperation.Add);
                 break;
             case ConsoleKey.OemMinus when key.Modifiers == ConsoleModifiers.Shift:
+            case ConsoleKey.Subtract:
                 PushInput();
                 _calc.DoBinaryOp(BinaryOperation.Subtract);
                 break;
             case ConsoleKey.D8 when key.Modifiers == ConsoleModifiers.Shift:
+            case ConsoleKey.Multiply:
                 PushInput();
                 _calc.DoBinaryOp(BinaryOperation.Multiply);
                 break;
             case ConsoleKey.Oem2 when key.Modifiers == ConsoleModifiers.None:
+            case ConsoleKey.Divide:
                 PushInput();
                 _calc.DoBinaryOp(BinaryOperation.Divide);
                 break;
@@ -439,6 +451,40 @@ class Program {
         return true;
     }
 
+    bool HandleFakeNumpadKeys(ConsoleKeyInfo key) {
+        if (!_fakeNumpad || key.Modifiers != ConsoleModifiers.None)
+            return false;
+        switch (key.Key) {
+            case ConsoleKey.M:
+                _input.Append("00");
+                break;
+            case ConsoleKey.OemComma:
+                _input.Append('0');
+                break;
+            case ConsoleKey.J:
+                _input.Append('1');
+                break;
+            case ConsoleKey.K:
+                _input.Append('2');
+                break;
+            case ConsoleKey.L:
+                _input.Append('3');
+                break;
+            case ConsoleKey.U:
+                _input.Append('4');
+                break;
+            case ConsoleKey.I:
+                _input.Append('5');
+                break;
+            case ConsoleKey.O:
+                _input.Append('6');
+                break;
+            default:
+                return false;
+        }
+        return true;
+    }
+
     bool HandleInputKeys(ConsoleKeyInfo key) {
         if (key.Modifiers != ConsoleModifiers.None && key.Modifiers != ConsoleModifiers.Shift)
             return false;
@@ -474,44 +520,44 @@ class Program {
         if (key.Modifiers != ConsoleModifiers.None)
             return false;
         switch (key.Key) {
-            case ConsoleKey.M:
-                _input.Append("00");
-                break;
             case ConsoleKey.D0:
-            case ConsoleKey.OemComma:
+            case ConsoleKey.NumPad0:
                 _input.Append('0');
                 break;
             case ConsoleKey.D1:
-            case ConsoleKey.J:
+            case ConsoleKey.NumPad1:
                 _input.Append('1');
                 break;
             case ConsoleKey.D2:
-            case ConsoleKey.K:
+            case ConsoleKey.NumPad2:
                 _input.Append('2');
                 break;
             case ConsoleKey.D3:
-            case ConsoleKey.L:
+            case ConsoleKey.NumPad3:
                 _input.Append('3');
                 break;
             case ConsoleKey.D4:
-            case ConsoleKey.U:
+            case ConsoleKey.NumPad4:
                 _input.Append('4');
                 break;
             case ConsoleKey.D5:
-            case ConsoleKey.I:
+            case ConsoleKey.NumPad5:
                 _input.Append('5');
                 break;
             case ConsoleKey.D6:
-            case ConsoleKey.O:
+            case ConsoleKey.NumPad6:
                 _input.Append('6');
                 break;
             case ConsoleKey.D7:
+            case ConsoleKey.NumPad7:
                 _input.Append('7');
                 break;
             case ConsoleKey.D8:
+            case ConsoleKey.NumPad8:
                 _input.Append('8');
                 break;
             case ConsoleKey.D9:
+            case ConsoleKey.NumPad9:
                 _input.Append('9');
                 break;
             case ConsoleKey.Spacebar:
