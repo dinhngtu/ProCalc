@@ -68,7 +68,7 @@ class Program {
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
-        DisplayFormat format = DisplayFormat.Hexadecimal;
+        DisplayFormat format = DisplayFormat.Decimal;
         DisplaySignedness sign = DisplaySignedness.Unsigned;
         InputTypes type = InputTypes.Int64;
         bool grouping = true;
