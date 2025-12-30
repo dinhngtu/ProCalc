@@ -9,7 +9,7 @@ class Program {
     DisplaySignedness _sign = DisplaySignedness.Unsigned;
     InputTypes _type = InputTypes.Int64;
     bool _grouping = true;
-    bool _zeropad = true;
+    PaddingMode _paddingMode = PaddingMode.RightJustified;
     bool _upper = true;
     bool _index = true;
 
@@ -199,7 +199,12 @@ class Program {
                 _grouping = !_grouping;
                 break;
             case ConsoleKey.D0 when key.Modifiers == ConsoleModifiers.Control:
-                _zeropad = !_zeropad;
+                _paddingMode = _paddingMode switch {
+                    PaddingMode.None => PaddingMode.RightJustified,
+                    PaddingMode.RightJustified => PaddingMode.ZeroPadded,
+                    PaddingMode.ZeroPadded => PaddingMode.None,
+                    _ => PaddingMode.None,
+                };
                 break;
             case ConsoleKey.D1 when key.Modifiers == ConsoleModifiers.Control:
                 _upper = !_upper;
@@ -321,7 +326,7 @@ class Program {
                     var entry = _calc.Peek();
                     _calc.DoStackOp(StackOperation.Drop, 1);
                     try {
-                        FormatValueRaw(_input, entry.Object, _format, _sign, 0, false, _upper);
+                        FormatValueRaw(_input, entry.Object, _format, _sign, 0, PaddingMode.None, _upper);
                         if (entry.Comment != null) {
                             _input.Append(';');
                             _input.Append(entry.Comment);
@@ -789,23 +794,24 @@ class Program {
         Console.Write(display.ToString());
     }
 
-    int GetPadSize(bool zeropad) {
-        if (!zeropad) return 0;
+    int GetPadSize(PaddingMode paddingMode) {
+        if (paddingMode != PaddingMode.ZeroPadded)
+            return 0;
         return _calc.WordBytes;
     }
 
     void FormatOctalRaw(
         StringBuilder sb,
         object value,
-        bool zeropad) {
-        var size = GetPadSize(true);
+        PaddingMode paddingMode) {
+        var size = GetPadSize(PaddingMode.ZeroPadded);
 
         var val = IntConverter.ToUInt128(value);
         var pad = (size * 8 + 2) / 3;
         var begin = sb.Length;
         for (int i = pad - 1; i >= 0; i--)
             sb.Append("01234567"[(int)(val >> (i * 3) & 7)]);
-        if (!zeropad)
+        if (paddingMode != PaddingMode.ZeroPadded)
             while (sb.Length > begin + 1 && sb[begin] == '0')
                 sb.Remove(begin, 1);
     }
@@ -816,14 +822,14 @@ class Program {
         DisplayFormat format,
         DisplaySignedness sign,
         int group,
-        bool zeropad,
+        PaddingMode paddingMode,
         bool upper) {
 
         if (format == DisplayFormat.Octal) {
-            FormatOctalRaw(sb, value, zeropad: zeropad);
+            FormatOctalRaw(sb, value, paddingMode: paddingMode);
         }
         else {
-            var size = GetPadSize(zeropad);
+            var size = GetPadSize(paddingMode);
 
             if (sign == DisplaySignedness.Unsigned)
                 value = IntConverter.ToUInt128(value);
@@ -850,7 +856,7 @@ class Program {
         }
     }
 
-    string FormatValue(IStackEntry value, int index) {
+    void FormatValue(StringBuilder sb, IStackEntry value) {
         var group = _format switch {
             DisplayFormat.Hexadecimal => 4,
             DisplayFormat.Decimal => 3,
@@ -860,23 +866,18 @@ class Program {
         };
         if (!_grouping)
             group = 0;
-        var size = GetPadSize(_zeropad);
-        var sb = new StringBuilder(size * 9 + 8);
         FormatValueRaw(
             sb,
             value.Object,
             format: _format,
             sign: _sign,
             group: group,
-            zeropad: _zeropad,
+            paddingMode: _paddingMode,
             upper: _upper);
-        if (_index)
-            sb.Insert(0, $"{index,4}  ");
         if (value.Comment != null) {
             sb.Append(" ; ");
             sb.Append(value.Comment);
         }
-        return sb.ToString();
     }
 
     void FormatBinaryFancy(StringBuilder sb, object value) {
@@ -929,23 +930,23 @@ class Program {
 
         Write("Hex:");
         sb.Clear();
-        FormatValueRaw(sb, value, DisplayFormat.Hexadecimal, DisplaySignedness.Unsigned, 4, true, _upper);
+        FormatValueRaw(sb, value, DisplayFormat.Hexadecimal, DisplaySignedness.Unsigned, 4, _paddingMode, _upper);
         Write(sb.ToString());
 
         Write("");
         Write("Dec (unsigned):");
         sb.Clear();
-        FormatValueRaw(sb, value, DisplayFormat.Decimal, DisplaySignedness.Unsigned, 3, true, _upper);
+        FormatValueRaw(sb, value, DisplayFormat.Decimal, DisplaySignedness.Unsigned, 3, _paddingMode, _upper);
         Write(sb.ToString());
         Write("Dec (signed):");
         sb.Clear();
-        FormatValueRaw(sb, value, DisplayFormat.Decimal, DisplaySignedness.Signed, 3, true, _upper);
+        FormatValueRaw(sb, value, DisplayFormat.Decimal, DisplaySignedness.Signed, 3, _paddingMode, _upper);
         Write(sb.ToString());
 
         Write("");
         Write("Oct:");
         sb.Clear();
-        FormatValueRaw(sb, value, DisplayFormat.Octal, _sign, 3, true, _upper);
+        FormatValueRaw(sb, value, DisplayFormat.Octal, _sign, 3, _paddingMode, _upper);
         Write(sb.ToString());
 
         Write("");
@@ -965,8 +966,23 @@ class Program {
             printable--;
         }
         var stackItems = calc.GetStackItems(Math.Min(printable, calc.Count)).ToList();
-        for (int i = 0; i < stackItems.Count; i++)
-            Write(FormatValue(stackItems[stackItems.Count - i - 1], stackItems.Count - i));
+        var maxLength = 0;
+        List<string> printed = [];
+        var sb = new StringBuilder(16 * 9 + 8);
+        for (int i = 0; i < stackItems.Count; i++) {
+            sb.Clear();
+            FormatValue(sb, stackItems[stackItems.Count - i - 1]);
+            maxLength = Math.Max(maxLength, sb.Length);
+            printed.Add(sb.ToString());
+        }
+        for (int i = 0; i < printed.Count; i++) {
+            var value = printed[i];
+            if (_paddingMode == PaddingMode.RightJustified)
+                value = value.PadLeft(maxLength);
+            if (_index)
+                value = $"{printed.Count - i,4}  " + value;
+            Write(value);
+        }
     }
 
     void PrintInputLine() {
@@ -1015,12 +1031,17 @@ class Program {
                     _ => throw new Exception("Unexpected format"),
                 };
                 Write(string.Format(
-                    "{0}  (F2) {1}{2,-6} (F3/F4)  {3,7} {4,4} {5} (Ctrl+9/0/1)",
+                    "{0}  {1}{2,-6} (F2/F3/F4)  {3,5} {4,5} {5} (Ctrl+9/0/1)",
                     mode,
                     _sign == DisplaySignedness.Signed ? "S" : "U",
                     _type,
-                    _grouping ? "Group" : "Ungroup",
-                    _zeropad ? "Pad" : "Left",
+                    _grouping ? "Group" : "Ungrp",
+                    _paddingMode switch {
+                        PaddingMode.None => "Left",
+                        PaddingMode.RightJustified => "Right",
+                        PaddingMode.ZeroPadded => "Pad",
+                        _ => throw new NotImplementedException(),
+                    },
                     _upper ? "Upper" : "Lower"));
             }
 
