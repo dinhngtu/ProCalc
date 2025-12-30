@@ -14,6 +14,8 @@ public enum BinaryOperation {
     ShiftRightArithmetic,
     RotateLeft,
     RotateRight,
+    AlignUp,
+    AlignDown,
 }
 
 public enum UnaryOperation {

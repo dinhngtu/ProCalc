@@ -50,6 +50,16 @@ public class RPNCalculator<T> : IRPNCalculator
         _stack.Clear();
     }
 
+    T AlignUp(T value, T bits) {
+        var mask = MaskRight(int.CreateChecked(bits));
+        return (value + mask) & ~mask;
+    }
+
+    T AlignDown(T value, T bits) {
+        var mask = MaskRight(int.CreateChecked(bits));
+        return value & ~mask;
+    }
+
     public void DoBinaryOp(BinaryOperation op) {
         if (_stack.Count < 2)
             throw new InvalidOperationException("Not enough operands");
@@ -73,6 +83,8 @@ public class RPNCalculator<T> : IRPNCalculator
                 BinaryOperation.ShiftRightArithmetic => a.Value >> int.CreateChecked(b.Value),
                 BinaryOperation.RotateLeft => T.RotateLeft(a.Value, int.CreateChecked(b.Value)),
                 BinaryOperation.RotateRight => T.RotateRight(a.Value, int.CreateChecked(b.Value)),
+                BinaryOperation.AlignUp => AlignUp(a.Value, b.Value),
+                BinaryOperation.AlignDown => AlignDown(a.Value, b.Value),
                 _ => throw new NotSupportedException(nameof(op)),
             };
         }

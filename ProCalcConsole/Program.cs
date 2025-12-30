@@ -174,9 +174,10 @@ class Program {
                     p = display top
 
                     Operators:
-                    Shift+Plus/Minus = add/subtract          Alt+Shift+<> = shift (inv. signedness)
-                    {} = rotate left/right                   () = mask left/right
-                    Alt+() = count leading/trailing zeroes   $ = popcount
+                    +_*/% = basic operators                  &|^~<> = bitwise logic
+                    Alt+Shift+</> = shift (inv. signedness)  Shift+[/] = rotate left/right
+                    Shift+9/0 = mask left/right              Alt+Shift+9/0 = count lead/trail 0s
+                    Shift+3/Alt+Shift+3 = align up/down      Shift+4 = popcount
 
                     """);
                 Pause();
@@ -362,7 +363,7 @@ class Program {
                 PushInput();
                 _calc.DoBinaryOp(BinaryOperation.Or);
                 break;
-            case ConsoleKey.Oem6 when key.Modifiers == ConsoleModifiers.Shift:
+            case ConsoleKey.D6 when key.Modifiers == ConsoleModifiers.Shift:
                 PushInput();
                 _calc.DoBinaryOp(BinaryOperation.Xor);
                 break;
@@ -389,6 +390,14 @@ class Program {
             case ConsoleKey.Oem6 when key.Modifiers == ConsoleModifiers.Shift:
                 PushInput();
                 _calc.DoBinaryOp(BinaryOperation.RotateRight);
+                break;
+            case ConsoleKey.D3 when key.Modifiers == ConsoleModifiers.Shift:
+                PushInput();
+                _calc.DoBinaryOp(BinaryOperation.AlignUp);
+                break;
+            case ConsoleKey.D3 when key.Modifiers == (ConsoleModifiers.Shift | ConsoleModifiers.Alt):
+                PushInput();
+                _calc.DoBinaryOp(BinaryOperation.AlignDown);
                 break;
             case ConsoleKey.Oem3 when key.Modifiers == ConsoleModifiers.Shift:
                 PushInput();
