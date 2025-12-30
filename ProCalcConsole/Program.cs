@@ -272,7 +272,20 @@ class Program {
                 break;
             case ConsoleKey.Delete when key.Modifiers == ConsoleModifiers.None:
                 if (_input.Length == 0) {
-                    throw new NotImplementedException();
+                    var entry = _calc.Peek();
+                    _calc.DoStackOp(StackOperation.Drop, 1);
+                    try {
+                        FormatValueRaw(_input, entry.Object, _format, _sign, 0, false, _upper);
+                        if (entry.Comment != null) {
+                            _input.Append(';');
+                            _input.Append(entry.Comment);
+                        }
+                    }
+                    catch {
+                        _calc.Push(entry);
+                        throw;
+                    }
+                    break;
                 }
                 else {
                     throw new InvalidOperationException("Still editing");
