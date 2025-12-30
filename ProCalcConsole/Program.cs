@@ -41,6 +41,7 @@ class Program {
 
     void DoMain() {
         Console.TreatControlCAsInput = true;
+        _calc.Push(0, null, null);
         Refresh();
         while (!_exit) {
             var key = Console.ReadKey(true);
