@@ -45,7 +45,8 @@ class Program {
         while (!_exit) {
             var key = Console.ReadKey(true);
             try {
-                if (HandleModeKeys(key) ||
+                if (HandleHelpKeys(key) ||
+                    HandleModeKeys(key) ||
                     HandleEditKeys(key) ||
                     HandleCommentKeys(key) ||
                     HandleStackKeys(key) ||
@@ -78,6 +79,42 @@ class Program {
     void ResetInput() {
         _input.Clear();
         _comment = false;
+    }
+
+    bool HandleHelpKeys(ConsoleKeyInfo key) {
+        switch (key.Key) {
+            case ConsoleKey.F1 when key.Modifiers == ConsoleModifiers.None:
+                Console.Clear();
+                Console.WriteLine("""
+                    Mode:
+                    F5-F8 = hex/dec/oct/bin                  F2 = toggle signed/unsigned
+                    F3/F4 = reduce/increase word size        Shift+F4 = extend (inv. signedness)
+                    Ctrl+9 = toggle digit grouping           Ctrl+0 = toggle zero pad
+                    Ctrl+1 = toggle upper/lowercase hex      Ctrl+2 = print index
+
+                    Commenting:
+                    Append `;` to add a comment              Use `index:comment` to set comment
+                    " = swap comment of index
+
+                    Stack:
+                    Up/Down = rotate stack                   Delete = edit last
+                    Shift+Delete = delete last               Ctrl+Delete = clear all
+                    z/s = extract/swap                       Shift+Enter = pick
+                    p = display top
+
+                    Operators:
+                    +_*/% = basic operators                  &|^~<> = bitwise logic
+                    Alt+Shift+</> = shift (inv. signedness)  Shift+[/] = rotate left/right
+                    Shift+9/0 = mask left/right              Alt+Shift+9/0 = count lead/trail 0s
+                    Shift+3/Alt+Shift+3 = align up/down      Shift+4 = popcount
+
+                    """);
+                Pause();
+                break;
+            default:
+                return false;
+        }
+        return true;
     }
 
     bool HandleModeKeys(ConsoleKeyInfo key) {
@@ -153,34 +190,6 @@ class Program {
                 break;
             case ConsoleKey.D2 when key.Modifiers == ConsoleModifiers.Control:
                 _index = !_index;
-                break;
-            case ConsoleKey.F1 when key.Modifiers == ConsoleModifiers.None:
-                Console.Clear();
-                Console.WriteLine("""
-                    Mode:
-                    F5-F8 = hex/dec/oct/bin                  F2 = toggle signed/unsigned
-                    F3/F4 = reduce/increase word size        Shift+F4 = extend (inv. signedness)
-                    Ctrl+9 = toggle digit grouping           Ctrl+0 = toggle zero pad
-                    Ctrl+1 = toggle upper/lowercase hex      Ctrl+2 = print index
-
-                    Commenting:
-                    Append `;` to add a comment              Use `index:comment` to set comment
-                    " = swap comment of index
-
-                    Stack:
-                    Up/Down = rotate stack                   Delete = edit last
-                    Shift+Delete = delete last               Ctrl+Delete = clear all
-                    z/s = extract/swap                       Shift+Enter = pick
-                    p = display top
-
-                    Operators:
-                    +_*/% = basic operators                  &|^~<> = bitwise logic
-                    Alt+Shift+</> = shift (inv. signedness)  Shift+[/] = rotate left/right
-                    Shift+9/0 = mask left/right              Alt+Shift+9/0 = count lead/trail 0s
-                    Shift+3/Alt+Shift+3 = align up/down      Shift+4 = popcount
-
-                    """);
-                Pause();
                 break;
             default:
                 return false;
