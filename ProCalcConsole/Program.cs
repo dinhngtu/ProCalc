@@ -4,45 +4,171 @@ using System.Globalization;
 using System.Text;
 
 class Program {
-    IRPNCalculator _calc = new RPNCalculator<long>();
-    DisplayFormat _format = DisplayFormat.Hexadecimal;
-    DisplaySignedness _sign = DisplaySignedness.Unsigned;
-    InputTypes _type = InputTypes.Int64;
-    bool _grouping = true;
-    PaddingMode _paddingMode = PaddingMode.RightJustified;
-    bool _upper = true;
-    bool _index = true;
+    IRPNCalculator _calc;
+    DisplayFormat _format;
+    DisplaySignedness _sign;
+    InputTypes _type;
+    bool _grouping;
+    PaddingMode _paddingMode;
+    bool _upper;
+    bool _index;
+    bool _fakeNumpad;
 
     readonly StringBuilder _input = new();
     int _inputCursor = 0;
     int _inputScroll = 0;
-    bool _fakeNumpad = false;
     bool _comment = false;
     bool _exit = false;
 
-    static void Main(string[] args) {
+    Program(
+        DisplayFormat format,
+        DisplaySignedness sign,
+        InputTypes type,
+        bool grouping,
+        PaddingMode paddingMode,
+        bool upper,
+        bool index,
+        bool fakeNumpad) {
+        _format = format;
+        _sign = sign;
+        _type = type;
+        _grouping = grouping;
+        _paddingMode = paddingMode;
+        _upper = upper;
+        _index = index;
+        _fakeNumpad = fakeNumpad;
+
+        _calc = _type switch {
+            InputTypes.Int8 => new RPNCalculator<sbyte>(),
+            InputTypes.Int16 => new RPNCalculator<short>(),
+            InputTypes.Int32 => new RPNCalculator<int>(),
+            InputTypes.Int64 => new RPNCalculator<long>(),
+            InputTypes.Int128 => new RPNCalculator<Int128>(),
+            _ => throw new NotImplementedException(),
+        };
+    }
+
+    static void PrintCommandLineHelp() {
+        Console.WriteLine("""
+            Command line parameters:
+
+            -hex/-dec/-oct/-bin     Set display format
+            -type <type>            Set type (e.g. s32, u64)
+            -group/-nogroup         Set digit grouping
+            -padding <padding>      Set padding mode
+            -upper/-lower           Set hexadecimal case
+            -index/-noindex         Show stack index
+            -numpad                 Enable fake numpad
+            -?                      Show this message
+
+            """);
+    }
+
+    static int Main(string[] args) {
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
-        var program = new Program();
-        foreach (var arg in args) {
-            if ("-hex".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                program._format = DisplayFormat.Hexadecimal;
-            }
-            else if ("-dec".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                program._format = DisplayFormat.Decimal;
-            }
-            else if ("-oct".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                program._format = DisplayFormat.Octal;
-            }
-            else if ("-bin".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                program._format = DisplayFormat.Binary;
-            }
-            else if ("-numpad".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                program._fakeNumpad = true;
+        DisplayFormat format = DisplayFormat.Hexadecimal;
+        DisplaySignedness sign = DisplaySignedness.Unsigned;
+        InputTypes type = InputTypes.Int64;
+        bool grouping = true;
+        PaddingMode paddingMode = PaddingMode.RightJustified;
+        bool upper = true;
+        bool index = true;
+        bool fakeNumpad = false;
+
+        try {
+            for (int i = 0; i < args.Length; i++) {
+                var arg = args[i];
+
+                if ("-hex".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    format = DisplayFormat.Hexadecimal;
+                }
+                else if ("-dec".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    format = DisplayFormat.Decimal;
+                }
+                else if ("-oct".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    format = DisplayFormat.Octal;
+                }
+                else if ("-bin".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    format = DisplayFormat.Binary;
+                }
+
+                else if ("-type".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    var typeName = args[++i];
+                    var signedness = char.ToLowerInvariant(typeName[0]) switch {
+                        's' => DisplaySignedness.Signed,
+                        'u' => DisplaySignedness.Unsigned,
+                        _ => throw new ArgumentException($"Invalid -type argument {typeName}"),
+                    };
+                    var typeSize = typeName[1..] switch {
+                        "8" => InputTypes.Int8,
+                        "16" => InputTypes.Int16,
+                        "32" => InputTypes.Int32,
+                        "64" => InputTypes.Int64,
+                        "128" => InputTypes.Int128,
+                        _ => throw new ArgumentException($"Invalid -type argument {typeName}"),
+                    };
+                    sign = signedness;
+                    type = typeSize;
+                }
+
+                else if ("-group".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    grouping = true;
+                }
+                else if ("-nogroup".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    grouping = false;
+                }
+
+                else if ("-padding".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    paddingMode = Enum.Parse<PaddingMode>(args[++i], ignoreCase: true);
+                }
+
+                else if ("-upper".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    upper = true;
+                }
+                else if ("-lower".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    upper = false;
+                }
+
+                else if ("-index".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    index = true;
+                }
+                else if ("-noindex".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    index = false;
+                }
+
+                else if ("-numpad".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    fakeNumpad = true;
+                }
+
+                else if ("-?".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    PrintCommandLineHelp();
+                    return 0;
+                }
+
+                else {
+                    throw new ArgumentException($"Invalid argument {arg}");
+                }
             }
         }
+        catch (Exception ex) {
+            Console.WriteLine(ex.Message);
+            PrintCommandLineHelp();
+            return 1;
+        }
+
+        var program = new Program(
+            format: format,
+            sign: sign,
+            type: type,
+            grouping: grouping,
+            paddingMode: paddingMode,
+            upper: upper,
+            index: index,
+            fakeNumpad: fakeNumpad);
         program.DoMain();
+        return 0;
     }
 
     void DoMain() {
@@ -117,9 +243,6 @@ class Program {
                     Alt+Shift+</> = shift (inv. signedness)  Shift+[/] = rotate left/right
                     Shift+9/0 = mask left/right              Alt+Shift+9/0 = count lead/trail 0s
                     Shift+3/Alt+Shift+3 = align up/down      Shift+4 = popcount
-
-                    Command line:
-                    -hex/-dec/-oct/-bin = set initial base   -numpad = enable UIOJKLM, numpad (M=00)
 
                     """);
                 Pause();
@@ -965,16 +1088,19 @@ class Program {
             Write("...");
             printable--;
         }
+
         var stackItems = calc.GetStackItems(Math.Min(printable, calc.Count)).ToList();
         var maxLength = 0;
         List<string> printed = [];
         var sb = new StringBuilder(16 * 9 + 8);
+
         for (int i = 0; i < stackItems.Count; i++) {
             sb.Clear();
             FormatValue(sb, stackItems[stackItems.Count - i - 1]);
             maxLength = Math.Max(maxLength, sb.Length);
             printed.Add(sb.ToString());
         }
+
         for (int i = 0; i < printed.Count; i++) {
             var value = printed[i];
             if (_paddingMode == PaddingMode.RightJustified)
@@ -1031,10 +1157,10 @@ class Program {
                     _ => throw new Exception("Unexpected format"),
                 };
                 Write(string.Format(
-                    "{0}  {1}{2,-6} (F2/F3/F4)  {3,5} {4,5} {5} (Ctrl+9/0/1)",
-                    mode,
+                    "{0}{1,-6} (F2/F3/F4)  {2}  {3,5} {4,5} {5} (Ctrl+9/0/1)",
                     _sign == DisplaySignedness.Signed ? "S" : "U",
                     _type,
+                    mode,
                     _grouping ? "Group" : "Ungrp",
                     _paddingMode switch {
                         PaddingMode.None => "Left",
