@@ -1133,6 +1133,7 @@ class Program {
     }
 
     void Refresh(RefreshFlags flags, Exception? ex = null) {
+        var inputCol = Console.CursorLeft;
         try {
             Console.CursorVisible = false;
 
@@ -1177,6 +1178,9 @@ class Program {
                 else {
                     PrintInputLine();
                 }
+            }
+            else {
+                Console.SetCursorPosition(inputCol, Console.WindowHeight - 1);
             }
         }
         finally {
