@@ -25,6 +25,7 @@ public enum UnaryOperation {
     PopCount,
     CountLeadingZeroes,
     CountTrailingZeroes,
+    Pow2,
 }
 
 public enum StackOperation {

@@ -123,6 +123,7 @@ public class RPNCalculator<T> : IRPNCalculator
                 UnaryOperation.PopCount => T.PopCount(val.Value),
                 UnaryOperation.CountLeadingZeroes => T.LeadingZeroCount(val.Value),
                 UnaryOperation.CountTrailingZeroes => T.TrailingZeroCount(val.Value),
+                UnaryOperation.Pow2 => T.One << int.CreateChecked(val.Value),
                 _ => throw new NotSupportedException(nameof(op)),
             };
         }

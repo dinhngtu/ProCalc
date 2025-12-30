@@ -243,7 +243,8 @@ class Program {
                     +_*/% = basic operators                  &|^~<> = bitwise logic
                     Alt+Shift+</> = shift (inv. signedness)  Shift+[/] = rotate left/right
                     Shift+9/0 = mask left/right              Alt+Shift+9/0 = count lead/trail 0s
-                    Shift+3/Alt+Shift+3 = align up/down      Shift+4 = popcount
+                    Shift+2 = pow2                           Shift+3/Alt+Shift+3 = align up/down
+                    Shift+4 = popcount
 
                     """);
                 Pause();
@@ -616,6 +617,10 @@ class Program {
             case ConsoleKey.D0 when key.Modifiers == (ConsoleModifiers.Shift | ConsoleModifiers.Alt):
                 PushInput();
                 _calc.DoUnaryOp(UnaryOperation.CountTrailingZeroes);
+                break;
+            case ConsoleKey.D2 when key.Modifiers == ConsoleModifiers.Shift:
+                PushInput();
+                _calc.DoUnaryOp(UnaryOperation.Pow2);
                 break;
             default:
                 return false;
