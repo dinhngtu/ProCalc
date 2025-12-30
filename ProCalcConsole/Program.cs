@@ -14,6 +14,8 @@ class Program {
     bool _index = true;
 
     readonly StringBuilder _input = new();
+    int _inputCursor = 0;
+    int _inputScroll = 0;
     bool _fakeNumpad = false;
     bool _comment = false;
     bool _exit = false;
@@ -84,6 +86,8 @@ class Program {
 
     void ResetInput() {
         _input.Clear();
+        _inputCursor = 0;
+        _inputScroll = 0;
         _comment = false;
     }
 
@@ -218,8 +222,26 @@ class Program {
             case ConsoleKey.L when key.Modifiers == ConsoleModifiers.Control:
                 break;
             case ConsoleKey.Backspace when key.Modifiers == ConsoleModifiers.None:
-                if (_input.Length > 0)
-                    _input.Remove(_input.Length - 1, 1);
+                if (_inputCursor > 0)
+                    _input.Remove(--_inputCursor, 1);
+                break;
+            case ConsoleKey.Delete when key.Modifiers == ConsoleModifiers.None:
+                if (_input.Length > 0 && _inputCursor < _input.Length)
+                    _input.Remove(_inputCursor, 1);
+                else
+                    return false;
+                break;
+            case ConsoleKey.LeftArrow when key.Modifiers == ConsoleModifiers.None:
+                if (_inputCursor > 0) _inputCursor--;
+                break;
+            case ConsoleKey.RightArrow when key.Modifiers == ConsoleModifiers.None:
+                if (_inputCursor < _input.Length) _inputCursor++;
+                break;
+            case ConsoleKey.Home when key.Modifiers == ConsoleModifiers.None:
+                _inputCursor = 0;
+                break;
+            case ConsoleKey.End when key.Modifiers == ConsoleModifiers.None:
+                _inputCursor = _input.Length;
                 break;
             case ConsoleKey.Escape when key.Modifiers == ConsoleModifiers.None:
                 ResetInput();
@@ -258,7 +280,7 @@ class Program {
             return false;
         if (key.Modifiers != ConsoleModifiers.None && key.Modifiers != ConsoleModifiers.Shift)
             return false;
-        _input.Append(key.KeyChar);
+        _input.Insert(_inputCursor++, key.KeyChar);
         return true;
     }
 
@@ -285,6 +307,7 @@ class Program {
                         _calc.Push(entry);
                         throw;
                     }
+                    _inputCursor = _input.Length;
                     break;
                 }
                 else {
@@ -469,28 +492,29 @@ class Program {
             return false;
         switch (key.Key) {
             case ConsoleKey.M:
-                _input.Append("00");
+                _input.Insert(_inputCursor, "00");
+                _inputCursor += 2;
                 break;
             case ConsoleKey.OemComma:
-                _input.Append('0');
+                _input.Insert(_inputCursor++, '0');
                 break;
             case ConsoleKey.J:
-                _input.Append('1');
+                _input.Insert(_inputCursor++, '1');
                 break;
             case ConsoleKey.K:
-                _input.Append('2');
+                _input.Insert(_inputCursor++, '2');
                 break;
             case ConsoleKey.L:
-                _input.Append('3');
+                _input.Insert(_inputCursor++, '3');
                 break;
             case ConsoleKey.U:
-                _input.Append('4');
+                _input.Insert(_inputCursor++, '4');
                 break;
             case ConsoleKey.I:
-                _input.Append('5');
+                _input.Insert(_inputCursor++, '5');
                 break;
             case ConsoleKey.O:
-                _input.Append('6');
+                _input.Insert(_inputCursor++, '6');
                 break;
             default:
                 return false;
@@ -504,7 +528,7 @@ class Program {
         switch (key.Key) {
             case ConsoleKey.Oem1:
                 _comment = true;
-                _input.Append(key.KeyChar);
+                _input.Insert(_inputCursor++, key.KeyChar);
                 break;
             case ConsoleKey.A:
             case ConsoleKey.B:
@@ -521,7 +545,7 @@ class Program {
             case ConsoleKey.Y:
             case ConsoleKey.OemMinus:
                 // Shift+Minus is handled in HandleOperators
-                _input.Append(key.KeyChar);
+                _input.Insert(_inputCursor++, key.KeyChar);
                 break;
             default:
                 return false;
@@ -535,46 +559,46 @@ class Program {
         switch (key.Key) {
             case ConsoleKey.D0:
             case ConsoleKey.NumPad0:
-                _input.Append('0');
+                _input.Insert(_inputCursor++, '0');
                 break;
             case ConsoleKey.D1:
             case ConsoleKey.NumPad1:
-                _input.Append('1');
+                _input.Insert(_inputCursor++, '1');
                 break;
             case ConsoleKey.D2:
             case ConsoleKey.NumPad2:
-                _input.Append('2');
+                _input.Insert(_inputCursor++, '2');
                 break;
             case ConsoleKey.D3:
             case ConsoleKey.NumPad3:
-                _input.Append('3');
+                _input.Insert(_inputCursor++, '3');
                 break;
             case ConsoleKey.D4:
             case ConsoleKey.NumPad4:
-                _input.Append('4');
+                _input.Insert(_inputCursor++, '4');
                 break;
             case ConsoleKey.D5:
             case ConsoleKey.NumPad5:
-                _input.Append('5');
+                _input.Insert(_inputCursor++, '5');
                 break;
             case ConsoleKey.D6:
             case ConsoleKey.NumPad6:
-                _input.Append('6');
+                _input.Insert(_inputCursor++, '6');
                 break;
             case ConsoleKey.D7:
             case ConsoleKey.NumPad7:
-                _input.Append('7');
+                _input.Insert(_inputCursor++, '7');
                 break;
             case ConsoleKey.D8:
             case ConsoleKey.NumPad8:
-                _input.Append('8');
+                _input.Insert(_inputCursor++, '8');
                 break;
             case ConsoleKey.D9:
             case ConsoleKey.NumPad9:
-                _input.Append('9');
+                _input.Insert(_inputCursor++, '9');
                 break;
             case ConsoleKey.Spacebar:
-                _input.Append(' ');
+                _input.Insert(_inputCursor++, ' ');
                 break;
             default:
                 return false;
@@ -931,10 +955,16 @@ class Program {
             Console.Beep();
         }
         else {
+            int typingWidth = Console.WindowWidth - 1;
+            if (_inputCursor < _inputScroll)
+                _inputScroll = _inputCursor;
+            if (_inputCursor >= _inputScroll + typingWidth)
+                _inputScroll = _inputCursor - typingWidth + 1;
+
             var input = _input.ToString();
-            var pad = Console.WindowWidth - 1;
-            Write(input, pad, ellipsis: true);
-            Console.SetCursorPosition(Math.Min(input.Length, pad), Console.WindowHeight - 1);
+            var visible = input.Substring(_inputScroll, Math.Min(typingWidth, input.Length - _inputScroll));
+            Write(visible, typingWidth);
+            Console.SetCursorPosition(_inputCursor - _inputScroll, Console.WindowHeight - 1);
         }
     }
 }
