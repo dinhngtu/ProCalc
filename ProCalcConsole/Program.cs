@@ -178,15 +178,15 @@ class Program {
         while (!_exit) {
             var key = Console.ReadKey(true);
             try {
-                if ((HandleHelpKeys(key, out RefreshFlags refreshFlags)) ||
-                    (HandleModeKeys(key, out refreshFlags)) ||
-                    (HandleEditKeys(key, out refreshFlags)) ||
-                    (HandleCommentKeys(key, out refreshFlags)) ||
-                    (HandleStackKeys(key, out refreshFlags)) ||
-                    (HandleOperators(key, out refreshFlags)) ||
-                    (HandleFakeNumpadKeys(key, out refreshFlags)) ||
-                    (HandleInputKeys(key, out refreshFlags)) ||
-                    (HandleInputKeys2(key, out refreshFlags))) {
+                if (HandleHelpKeys(key, out RefreshFlags refreshFlags) ||
+                    HandleModeKeys(key, out refreshFlags) ||
+                    HandleEditKeys(key, out refreshFlags) ||
+                    HandleCommentKeys(key, out refreshFlags) ||
+                    HandleStackKeys(key, out refreshFlags) ||
+                    HandleOperators(key, out refreshFlags) ||
+                    HandleFakeNumpadKeys(key, out refreshFlags) ||
+                    HandleInputKeys(key, out refreshFlags) ||
+                    HandleInputKeys2(key, out refreshFlags)) {
                     Refresh(refreshFlags);
                     continue;
                 }
