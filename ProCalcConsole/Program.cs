@@ -990,18 +990,38 @@ class Program {
         var sb = new StringBuilder(16 * 9 + 8);
 
         for (int i = 0; i < stackItems.Count; i++) {
+            var entry = stackItems[stackItems.Count - i - 1];
             sb.Clear();
-            FormatValue(sb, stackItems[stackItems.Count - i - 1]);
+            var group = _format switch {
+                IntegerFormat.Hexadecimal => 4,
+                IntegerFormat.Decimal => 3,
+                IntegerFormat.Octal => 3,
+                IntegerFormat.Binary => 4,
+                _ => throw new InvalidOperationException(),
+            };
+            if (!_grouping)
+                group = 0;
+            FormatValueRaw(
+                sb,
+                entry.Object,
+                format: _format,
+                sign: _sign,
+                group: group,
+                paddingMode: _paddingMode,
+                upper: _upper);
             maxLength = Math.Max(maxLength, sb.Length);
             printed.Add(sb.ToString());
         }
 
-        for (int i = 0; i < printed.Count; i++) {
+        for (int i = 0; i < stackItems.Count; i++) {
+            var entry = stackItems[stackItems.Count - i - 1];
             var value = printed[i];
             if (_paddingMode == PaddingMode.RightJustified)
                 value = value.PadLeft(maxLength);
             if (_index)
-                value = $"{printed.Count - i,4}  " + value;
+                value = $"{printed.Count - i,4}  {value}";
+            if (entry.Comment != null)
+                value = value + " ; " + entry.Comment;
             Write(value);
         }
     }
