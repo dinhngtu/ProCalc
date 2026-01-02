@@ -883,30 +883,6 @@ class Program {
             ApplyGrouping(sb, group);
     }
 
-    void FormatValue(StringBuilder sb, IStackEntry value) {
-        var group = _format switch {
-            IntegerFormat.Hexadecimal => 4,
-            IntegerFormat.Decimal => 3,
-            IntegerFormat.Octal => 3,
-            IntegerFormat.Binary => 4,
-            _ => throw new InvalidOperationException(),
-        };
-        if (!_grouping)
-            group = 0;
-        FormatValueRaw(
-            sb,
-            value.Object,
-            format: _format,
-            sign: _sign,
-            group: group,
-            paddingMode: _paddingMode,
-            upper: _upper);
-        if (value.Comment != null) {
-            sb.Append(" ; ");
-            sb.Append(value.Comment);
-        }
-    }
-
     void FormatBinaryFancyRow(StringBuilder sb, UInt128 val, int startBit, int count) {
         for (int i = count - 1; i >= 0; i--) {
             sb.Append(((val >> (startBit + i)) & 1) != 0 ? '1' : '0');
