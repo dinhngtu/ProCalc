@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Numerics;
+using System.Text;
 
 namespace ProCalcCore;
 
@@ -281,5 +283,120 @@ public class RPNCalculator<T> : IRPNCalculator
             return Into<sbyte>(signExtend);
         else
             throw new ArgumentOutOfRangeException(nameof(type));
+    }
+
+    static T ParseOctal(IEnumerable<char> v) {
+        var result = T.Zero;
+        var eight = T.CreateTruncating(8);
+        foreach (var c in v) {
+            var cv = "01234567".IndexOf(c);
+            if (cv < 0)
+                throw new InvalidDataException("Invalid octal string");
+            unchecked {
+                result = result * eight + T.CreateChecked(cv);
+            }
+        }
+        return result;
+    }
+
+    public static IStackEntry? Parse(ReadOnlySpan<char> input, IntegerFormat format, out char commentChar) {
+        commentChar = '\0';
+
+        var scratch = new StringBuilder();
+        scratch.Append(input);
+        if (scratch.Length == 0)
+            return null;
+
+        var commentIndex = input.IndexOfAny(';', ':');
+        string? comment = null;
+        if (commentIndex >= 0) {
+            scratch.Remove(commentIndex, scratch.Length - commentIndex);
+            comment = input[(commentIndex + 1)..].Trim().ToString();
+            commentChar = input[commentIndex];
+        }
+
+        scratch.Replace(" ", null);
+        var realFormat = format;
+        var explicitFormat = false;
+        var negative = false;
+
+        if (scratch.Length == 0)
+            throw new ArgumentException("Found a comment but input is empty");
+        if (scratch[0] == '-') {
+            negative = true;
+            scratch.Remove(0, 1);
+        }
+        if (scratch.Length > 2) {
+            explicitFormat = true;
+            switch (new string([scratch[0], scratch[1]]).ToLowerInvariant()) {
+                case "0x":
+                case "0h":
+                    realFormat = IntegerFormat.Hexadecimal;
+                    break;
+                case "0n":
+                    realFormat = IntegerFormat.Decimal;
+                    break;
+                case "0o":
+                case "0t":
+                    realFormat = IntegerFormat.Octal;
+                    break;
+                case "0y":
+                case "0b" when format != IntegerFormat.Hexadecimal:
+                    realFormat = IntegerFormat.Binary;
+                    break;
+                default:
+                    explicitFormat = false;
+                    break;
+            }
+            if (explicitFormat)
+                scratch.Remove(0, 2);
+        }
+        if (!explicitFormat) {
+            explicitFormat = true;
+            switch (char.ToLowerInvariant(scratch[^1])) {
+                case 'x':
+                case 'h':
+                    realFormat = IntegerFormat.Hexadecimal;
+                    break;
+                case 'n':
+                    realFormat = IntegerFormat.Decimal;
+                    break;
+                case 'o':
+                case 't':
+                    realFormat = IntegerFormat.Octal;
+                    break;
+                case 'y':
+                    realFormat = IntegerFormat.Binary;
+                    break;
+                default:
+                    explicitFormat = false;
+                    break;
+            }
+            if (explicitFormat)
+                scratch.Remove(scratch.Length - 1, 1);
+        }
+        var raw = realFormat switch {
+            IntegerFormat.Hexadecimal => T.Parse(scratch.ToString(), NumberStyles.AllowHexSpecifier, null),
+            IntegerFormat.Decimal => T.Parse(scratch.ToString(), NumberStyles.None, null),
+            IntegerFormat.Octal => ParseOctal(scratch.ToString()),
+            IntegerFormat.Binary => T.Parse(scratch.ToString(), NumberStyles.AllowBinarySpecifier, null),
+            _ => throw new NotImplementedException(),
+        };
+        if (negative) {
+            return new StackEntry<T>() {
+                Value = T.CreateTruncating(-raw),
+                Comment = comment,
+            };
+        }
+        else {
+            return new StackEntry<T>() {
+                Value = T.CreateTruncating(raw),
+                Comment = comment,
+            };
+        }
+    }
+
+    public IStackEntry? ParseEntry(ReadOnlySpan<char> input, IntegerFormat format, out char commentChar) {
+        return Parse(input, format, out commentChar);
     }
 }

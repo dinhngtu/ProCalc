@@ -12,4 +12,5 @@ public interface IRPNCalculator {
     void DoStackOp(StackOperation op, int? input);
     IEnumerable<IStackEntry> GetStackItems(int max = int.MaxValue);
     IRPNCalculator ConvertTo(Type type, bool signExtend);
+    IStackEntry? ParseEntry(ReadOnlySpan<char> input, IntegerFormat format, out char commentChar);
 }

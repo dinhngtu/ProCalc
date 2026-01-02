@@ -5,7 +5,7 @@ using System.Text;
 
 class Program {
     IRPNCalculator _calc;
-    DisplayFormat _format;
+    IntegerFormat _format;
     DisplaySignedness _sign;
     InputTypes _type;
     bool _grouping;
@@ -21,7 +21,7 @@ class Program {
     bool _exit = false;
 
     Program(
-        DisplayFormat format,
+        IntegerFormat format,
         DisplaySignedness sign,
         InputTypes type,
         bool grouping,
@@ -68,7 +68,7 @@ class Program {
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
-        DisplayFormat format = DisplayFormat.Decimal;
+        IntegerFormat format = IntegerFormat.Decimal;
         DisplaySignedness sign = DisplaySignedness.Unsigned;
         InputTypes type = InputTypes.Int64;
         bool grouping = true;
@@ -82,16 +82,16 @@ class Program {
                 var arg = args[i];
 
                 if ("-hex".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    format = DisplayFormat.Hexadecimal;
+                    format = IntegerFormat.Hexadecimal;
                 }
                 else if ("-dec".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    format = DisplayFormat.Decimal;
+                    format = IntegerFormat.Decimal;
                 }
                 else if ("-oct".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    format = DisplayFormat.Octal;
+                    format = IntegerFormat.Octal;
                 }
                 else if ("-bin".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    format = DisplayFormat.Binary;
+                    format = IntegerFormat.Binary;
                 }
 
                 else if ("-type".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
@@ -307,16 +307,16 @@ class Program {
                     break;
                 }
             case ConsoleKey.F5 when key.Modifiers == ConsoleModifiers.None:
-                _format = DisplayFormat.Hexadecimal;
+                _format = IntegerFormat.Hexadecimal;
                 break;
             case ConsoleKey.F6 when key.Modifiers == ConsoleModifiers.None:
-                _format = DisplayFormat.Decimal;
+                _format = IntegerFormat.Decimal;
                 break;
             case ConsoleKey.F7 when key.Modifiers == ConsoleModifiers.None:
-                _format = DisplayFormat.Octal;
+                _format = IntegerFormat.Octal;
                 break;
             case ConsoleKey.F8 when key.Modifiers == ConsoleModifiers.None:
-                _format = DisplayFormat.Binary;
+                _format = IntegerFormat.Binary;
                 break;
             case ConsoleKey.D9 when key.Modifiers == ConsoleModifiers.Control:
                 _grouping = !_grouping;
@@ -750,112 +750,18 @@ class Program {
         return true;
     }
 
-    UInt128 ParseOctal(IEnumerable<char> v) {
-        var result = UInt128.Zero;
-        foreach (var c in v) {
-            unchecked {
-                var cv = "01234567".IndexOf(c);
-                if (cv < 0)
-                    throw new InvalidDataException("Invalid octal string");
-                result = result * 8 + (UInt128)cv;
-            }
-        }
-        return result;
-    }
-
     void PushInput(bool stack = false) {
-        if (_input.Length == 0)
-            return;
-
         var original = _input.ToString();
-        var commentIndex = original.IndexOfAny(';', ':');
-        string? comment = null;
-        bool isOverrideComment = false;
-        if (commentIndex >= 0) {
-            _input.Remove(commentIndex, _input.Length - commentIndex);
-            comment = original[(commentIndex + 1)..].Trim();
-            isOverrideComment = original[commentIndex] == ':';
-        }
-
-        _input.Replace(" ", null);
         try {
-            if (stack) {
-                _calc.Push(Int128.Parse(_input.ToString()), comment, null);
-            }
-            else {
-                var realFormat = _format;
-                var explicitFormat = false;
-                var negative = false;
+            var entry = _calc.ParseEntry(
+                original,
+                stack ? IntegerFormat.Decimal : _format,
+                out var commentChar);
+            if (entry == null)
+                return;
 
-                if (_input.Length == 0)
-                    throw new ArgumentException("Found a comment but input is empty");
-                if (_input[0] == '-') {
-                    negative = true;
-                    _input.Remove(0, 1);
-                }
-                if (_input.Length > 2) {
-                    explicitFormat = true;
-                    switch (new string([_input[0], _input[1]]).ToLowerInvariant()) {
-                        case "0x":
-                        case "0h":
-                            realFormat = DisplayFormat.Hexadecimal;
-                            break;
-                        case "0n":
-                            realFormat = DisplayFormat.Decimal;
-                            break;
-                        case "0o":
-                        case "0t":
-                            realFormat = DisplayFormat.Octal;
-                            break;
-                        case "0y":
-                        case "0b" when _format == DisplayFormat.Decimal:
-                            realFormat = DisplayFormat.Binary;
-                            break;
-                        default:
-                            explicitFormat = false;
-                            break;
-                    }
-                    if (explicitFormat)
-                        _input.Remove(0, 2);
-                }
-                if (!explicitFormat) {
-                    explicitFormat = true;
-                    switch (char.ToLowerInvariant(_input[^1])) {
-                        case 'x':
-                        case 'h':
-                            realFormat = DisplayFormat.Hexadecimal;
-                            break;
-                        case 'n':
-                            realFormat = DisplayFormat.Decimal;
-                            break;
-                        case 'o':
-                        case 't':
-                            realFormat = DisplayFormat.Octal;
-                            break;
-                        case 'y':
-                            realFormat = DisplayFormat.Binary;
-                            break;
-                        default:
-                            explicitFormat = false;
-                            break;
-                    }
-                    if (explicitFormat)
-                        _input.Remove(_input.Length - 1, 1);
-                }
-                var raw = realFormat switch {
-                    DisplayFormat.Hexadecimal => UInt128.Parse(_input.ToString(), NumberStyles.AllowHexSpecifier),
-                    DisplayFormat.Decimal => UInt128.Parse(_input.ToString(), NumberStyles.None),
-                    DisplayFormat.Octal => ParseOctal(_input.ToString()),
-                    DisplayFormat.Binary => UInt128.Parse(_input.ToString(), NumberStyles.AllowBinarySpecifier),
-                    _ => throw new NotImplementedException(),
-                };
-                if (negative)
-                    _calc.Push(Int128.CreateTruncating(-raw), comment, null);
-                else
-                    _calc.Push(Int128.CreateTruncating(raw), comment, null);
-            }
-
-            if (isOverrideComment) {
+            _calc.Push(entry);
+            if (commentChar == ':') {
                 try {
                     _calc.DoStackOp(StackOperation.SetComment, null);
                 }
@@ -948,13 +854,13 @@ class Program {
     void FormatValueRaw(
         StringBuilder sb,
         object value,
-        DisplayFormat format,
+        IntegerFormat format,
         DisplaySignedness sign,
         int group,
         PaddingMode paddingMode,
         bool upper) {
 
-        if (format == DisplayFormat.Octal) {
+        if (format == IntegerFormat.Octal) {
             FormatOctalRaw(sb, value, paddingMode: paddingMode);
         }
         else {
@@ -964,9 +870,9 @@ class Program {
                 value = IntConverter.ToUInt128(value);
 
             sb.AppendFormat(format switch {
-                DisplayFormat.Hexadecimal => upper ? $"{{0:X{size * 2}}}" : $"{{0:x{size * 2}}}",
-                DisplayFormat.Decimal => "{0:G}",
-                DisplayFormat.Binary => $"{{0:B{size * 8}}}",
+                IntegerFormat.Hexadecimal => upper ? $"{{0:X{size * 2}}}" : $"{{0:x{size * 2}}}",
+                IntegerFormat.Decimal => "{0:G}",
+                IntegerFormat.Binary => $"{{0:B{size * 8}}}",
                 _ => throw new InvalidOperationException(),
             }, value);
         }
@@ -977,10 +883,10 @@ class Program {
 
     void FormatValue(StringBuilder sb, IStackEntry value) {
         var group = _format switch {
-            DisplayFormat.Hexadecimal => 4,
-            DisplayFormat.Decimal => 3,
-            DisplayFormat.Octal => 3,
-            DisplayFormat.Binary => 4,
+            IntegerFormat.Hexadecimal => 4,
+            IntegerFormat.Decimal => 3,
+            IntegerFormat.Octal => 3,
+            IntegerFormat.Binary => 4,
             _ => throw new InvalidOperationException(),
         };
         if (!_grouping)
@@ -1042,23 +948,23 @@ class Program {
 
         Write("Hex:");
         sb.Clear();
-        FormatValueRaw(sb, value, DisplayFormat.Hexadecimal, DisplaySignedness.Unsigned, 4, _paddingMode, _upper);
+        FormatValueRaw(sb, value, IntegerFormat.Hexadecimal, DisplaySignedness.Unsigned, 4, _paddingMode, _upper);
         Write(sb.ToString());
 
         Write("");
         Write("Dec (unsigned):");
         sb.Clear();
-        FormatValueRaw(sb, value, DisplayFormat.Decimal, DisplaySignedness.Unsigned, 3, _paddingMode, _upper);
+        FormatValueRaw(sb, value, IntegerFormat.Decimal, DisplaySignedness.Unsigned, 3, _paddingMode, _upper);
         Write(sb.ToString());
         Write("Dec (signed):");
         sb.Clear();
-        FormatValueRaw(sb, value, DisplayFormat.Decimal, DisplaySignedness.Signed, 3, _paddingMode, _upper);
+        FormatValueRaw(sb, value, IntegerFormat.Decimal, DisplaySignedness.Signed, 3, _paddingMode, _upper);
         Write(sb.ToString());
 
         Write("");
         Write("Oct:");
         sb.Clear();
-        FormatValueRaw(sb, value, DisplayFormat.Octal, _sign, 3, _paddingMode, _upper);
+        FormatValueRaw(sb, value, IntegerFormat.Octal, _sign, 3, _paddingMode, _upper);
         Write(sb.ToString());
 
         Write("");
@@ -1140,10 +1046,10 @@ class Program {
             if (flags.HasFlag(RefreshFlags.Status)) {
                 Console.SetCursorPosition(0, 0);
                 var mode = _format switch {
-                    DisplayFormat.Hexadecimal => "*Hex* F6   F7   F8  ",
-                    DisplayFormat.Decimal => " F5  *Dec* F7   F8  ",
-                    DisplayFormat.Octal => " F5   F6  *Oct* F8  ",
-                    DisplayFormat.Binary => " F5   F6   F7  *Bin*",
+                    IntegerFormat.Hexadecimal => "*Hex* F6   F7   F8  ",
+                    IntegerFormat.Decimal => " F5  *Dec* F7   F8  ",
+                    IntegerFormat.Octal => " F5   F6  *Oct* F8  ",
+                    IntegerFormat.Binary => " F5   F6   F7  *Bin*",
                     _ => throw new Exception("Unexpected format"),
                 };
                 Write(string.Format(
