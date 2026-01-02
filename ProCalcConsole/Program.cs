@@ -379,6 +379,8 @@ class Program {
                 _inputCursor = _input.Length;
                 break;
             case ConsoleKey.Escape when key.Modifiers == ConsoleModifiers.None:
+                break;
+            case ConsoleKey.W when key.Modifiers == ConsoleModifiers.Control:
                 ResetInput();
                 break;
             default:
