@@ -6,7 +6,7 @@ using System.Text;
 class Program {
     IRPNCalculator _calc;
     IntegerFormat _format;
-    DisplaySignedness _sign;
+    bool _signed;
     InputTypes _type;
     bool _grouping;
     PaddingMode _paddingMode;
@@ -20,9 +20,11 @@ class Program {
     bool _comment = false;
     bool _exit = false;
 
+    ResultFlags _flags = 0;
+
     Program(
         IntegerFormat format,
-        DisplaySignedness sign,
+        bool signed,
         InputTypes type,
         bool grouping,
         PaddingMode paddingMode,
@@ -30,7 +32,7 @@ class Program {
         bool index,
         bool fakeNumpad) {
         _format = format;
-        _sign = sign;
+        _signed = signed;
         _type = type;
         _grouping = grouping;
         _paddingMode = paddingMode;
@@ -69,7 +71,7 @@ class Program {
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
         IntegerFormat format = IntegerFormat.Decimal;
-        DisplaySignedness sign = DisplaySignedness.Unsigned;
+        bool signed = false;
         InputTypes type = InputTypes.Int64;
         bool grouping = true;
         PaddingMode paddingMode = PaddingMode.RightJustified;
@@ -96,11 +98,6 @@ class Program {
 
                 else if ("-type".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                     var typeName = args[++i];
-                    var signedness = char.ToLowerInvariant(typeName[0]) switch {
-                        's' => DisplaySignedness.Signed,
-                        'u' => DisplaySignedness.Unsigned,
-                        _ => throw new ArgumentException($"Invalid -type argument {typeName}"),
-                    };
                     var typeSize = typeName[1..] switch {
                         "8" => InputTypes.Int8,
                         "16" => InputTypes.Int16,
@@ -109,7 +106,11 @@ class Program {
                         "128" => InputTypes.Int128,
                         _ => throw new ArgumentException($"Invalid -type argument {typeName}"),
                     };
-                    sign = signedness;
+                    signed = char.ToLowerInvariant(typeName[0]) switch {
+                        's' => true,
+                        'u' => false,
+                        _ => throw new ArgumentException($"Invalid -type argument {typeName}"),
+                    };
                     type = typeSize;
                 }
 
@@ -160,7 +161,7 @@ class Program {
 
         var program = new Program(
             format: format,
-            sign: sign,
+            signed: signed,
             type: type,
             grouping: grouping,
             paddingMode: paddingMode,
@@ -178,16 +179,17 @@ class Program {
         while (!_exit) {
             var key = Console.ReadKey(true);
             try {
-                if (HandleHelpKeys(key, out RefreshFlags refreshFlags) ||
-                    HandleModeKeys(key, out refreshFlags) ||
-                    HandleEditKeys(key, out refreshFlags) ||
-                    HandleCommentKeys(key, out refreshFlags) ||
-                    HandleStackKeys(key, out refreshFlags) ||
-                    HandleOperators(key, out refreshFlags) ||
-                    HandleFakeNumpadKeys(key, out refreshFlags) ||
-                    HandleInputKeys(key, out refreshFlags) ||
-                    HandleInputKeys2(key, out refreshFlags)) {
-                    Refresh(refreshFlags);
+                if (HandleHelpKeys(key, out RefreshFlags refresh) ||
+                    HandleModeKeys(key, out refresh) ||
+                    HandleEditKeys(key, out refresh) ||
+                    HandleCommentKeys(key, out refresh) ||
+                    HandleStackKeys(key, out refresh) ||
+                    HandleBinaryOperators(key, out refresh) ||
+                    HandleOperators(key, out refresh) ||
+                    HandleFakeNumpadKeys(key, out refresh) ||
+                    HandleInputKeys(key, out refresh) ||
+                    HandleInputKeys2(key, out refresh)) {
+                    Refresh(refresh);
                     continue;
                 }
                 throw new NotSupportedException(string.Format(
@@ -217,15 +219,15 @@ class Program {
         _comment = false;
     }
 
-    bool HandleHelpKeys(ConsoleKeyInfo key, out RefreshFlags flags) {
-        flags = RefreshFlags.Screen;
+    bool HandleHelpKeys(ConsoleKeyInfo key, out RefreshFlags refresh) {
+        refresh = RefreshFlags.Screen;
         switch (key.Key) {
             case ConsoleKey.F1 when key.Modifiers == ConsoleModifiers.None:
                 Console.Clear();
                 Console.WriteLine("""
                     Mode:
                     F5-F8 = hex/dec/oct/bin                  F2 = toggle signed/unsigned
-                    F3/F4 = reduce/increase word size        Shift+F4 = extend (inv. signedness)
+                    F3/F4 = truncate/extend (Ctrl = invert S/U)
                     Ctrl+9 = toggle digit grouping           Ctrl+0 = toggle zero pad
                     Ctrl+1 = toggle upper/lowercase hex      Ctrl+2 = print index
 
@@ -239,12 +241,15 @@ class Program {
                     z/s = extract/swap                       Shift+Enter = pick
                     p = display top
 
-                    Operators:
-                    +_*/% = basic operators                  &|^~<> = bitwise logic
-                    Alt+Shift+</> = shift (inv. signedness)  Shift+[/] = rotate left/right
-                    Shift+9/0 = mask left/right              Alt+Shift+9/0 = count lead/trail 0s
-                    Shift+2 = pow2                           Shift+3/Alt+Shift+3 = align up/down
-                    Shift+4 = popcount
+                    Carry operators (add Alt to use carry):
+                    `+_` = add/subtract                      `{}` = rotate left/right
+                    `<>` = shift (Ctrl = invert S/U)
+
+                    Other operators:
+                    `*%` = mul/rem                           `/` = div (Ctrl = invert S/U)
+                    `&|^~` = bitwise logic                   Shift+4 = popcount
+                    Shift+9/0 = mask left/right              Ctrl+Shift+9/0 = count lead/trail 0s
+                    Shift+2 = pow2                           Shift+3/Ctrl+Shift+3 = align up/down
 
                     """);
                 Pause();
@@ -255,14 +260,11 @@ class Program {
         return true;
     }
 
-    bool HandleModeKeys(ConsoleKeyInfo key, out RefreshFlags flags) {
-        flags = RefreshFlags.Status | RefreshFlags.Stack;
+    bool HandleModeKeys(ConsoleKeyInfo key, out RefreshFlags refresh) {
+        refresh = RefreshFlags.Status | RefreshFlags.Stack;
         switch (key.Key) {
             case ConsoleKey.F2 when key.Modifiers == ConsoleModifiers.None:
-                if (_sign == DisplaySignedness.Signed)
-                    _sign = DisplaySignedness.Unsigned;
-                else
-                    _sign = DisplaySignedness.Signed;
+                _signed = !_signed;
                 break;
             case ConsoleKey.F3 when key.Modifiers == ConsoleModifiers.None:
             case ConsoleKey.F3 when key.Modifiers == ConsoleModifiers.Shift: {
@@ -287,22 +289,22 @@ class Program {
             case ConsoleKey.F4 when key.Modifiers == ConsoleModifiers.None:
             case ConsoleKey.F4 when key.Modifiers == ConsoleModifiers.Shift: {
                     var shifted = key.Modifiers.HasFlag(ConsoleModifiers.Shift);
-                    var signExtend = (_sign == DisplaySignedness.Signed) ^ shifted;
+                    var signed = _signed ^ shifted;
                     if (_type == InputTypes.Int8) {
                         _type = InputTypes.Int16;
-                        _calc = _calc.ConvertTo(typeof(short), signExtend);
+                        _calc = _calc.ConvertTo(typeof(short), signed);
                     }
                     else if (_type == InputTypes.Int16) {
                         _type = InputTypes.Int32;
-                        _calc = _calc.ConvertTo(typeof(int), signExtend);
+                        _calc = _calc.ConvertTo(typeof(int), signed);
                     }
                     else if (_type == InputTypes.Int32) {
                         _type = InputTypes.Int64;
-                        _calc = _calc.ConvertTo(typeof(long), signExtend);
+                        _calc = _calc.ConvertTo(typeof(long), signed);
                     }
                     else if (_type == InputTypes.Int64) {
                         _type = InputTypes.Int128;
-                        _calc = _calc.ConvertTo(typeof(Int128), signExtend);
+                        _calc = _calc.ConvertTo(typeof(Int128), signed);
                     }
                     break;
                 }
@@ -341,19 +343,19 @@ class Program {
         return true;
     }
 
-    bool HandleEditKeys(ConsoleKeyInfo key, out RefreshFlags flags) {
-        flags = RefreshFlags.Input;
+    bool HandleEditKeys(ConsoleKeyInfo key, out RefreshFlags refresh) {
+        refresh = RefreshFlags.Input;
         switch (key.Key) {
             case ConsoleKey.Enter when key.Modifiers == ConsoleModifiers.None:
                 PushInput();
-                flags = RefreshFlags.Stack | RefreshFlags.Input;
+                refresh = RefreshFlags.Stack | RefreshFlags.Input;
                 break;
             case ConsoleKey.D when key.Modifiers == ConsoleModifiers.Control:
                 if (_input.Length == 0)
                     _exit = true;
                 break;
             case ConsoleKey.L when key.Modifiers == ConsoleModifiers.Control:
-                flags = RefreshFlags.Screen;
+                refresh = RefreshFlags.Screen;
                 break;
             case ConsoleKey.Backspace when key.Modifiers == ConsoleModifiers.None:
                 if (_inputCursor > 0)
@@ -389,8 +391,8 @@ class Program {
         return true;
     }
 
-    bool HandleCommentKeys(ConsoleKeyInfo key, out RefreshFlags flags) {
-        flags = RefreshFlags.Stack | RefreshFlags.Input;
+    bool HandleCommentKeys(ConsoleKeyInfo key, out RefreshFlags refresh) {
+        refresh = RefreshFlags.Stack | RefreshFlags.Input;
         switch (key.Key) {
             case ConsoleKey.Oem7 when key.Modifiers == ConsoleModifiers.Shift:
                 if (_input.Length == 0) {
@@ -411,7 +413,7 @@ class Program {
                 break;
         }
 
-        flags = RefreshFlags.Input;
+        refresh = RefreshFlags.Input;
         if (!_comment)
             return false;
         if (key.KeyChar == '\0')
@@ -422,8 +424,8 @@ class Program {
         return true;
     }
 
-    bool HandleStackKeys(ConsoleKeyInfo key, out RefreshFlags flags) {
-        flags = RefreshFlags.Stack | RefreshFlags.Input;
+    bool HandleStackKeys(ConsoleKeyInfo key, out RefreshFlags refresh) {
+        refresh = RefreshFlags.Stack | RefreshFlags.Input;
         switch (key.Key) {
             case ConsoleKey.UpArrow when key.Modifiers == ConsoleModifiers.None:
                 _calc.DoStackOp(StackOperation.Roll, -1);
@@ -438,7 +440,7 @@ class Program {
                 var entry = _calc.Peek();
                 _calc.DoStackOp(StackOperation.Drop, 1);
                 try {
-                    FormatValueRaw(_input, entry.Object, _format, _sign, 0, PaddingMode.None, _upper);
+                    FormatValueRaw(_input, entry.Object, _format, _signed, 0, PaddingMode.None, _upper);
                     if (entry.Comment != null) {
                         _input.Append(';');
                         _input.Append(entry.Comment);
@@ -517,7 +519,7 @@ class Program {
             case ConsoleKey.P when key.Modifiers == ConsoleModifiers.None:
                 var val = _calc.Peek();
                 PrintValue(val.Object);
-                flags = RefreshFlags.Screen;
+                refresh = RefreshFlags.Screen;
                 break;
             default:
                 return false;
@@ -525,77 +527,126 @@ class Program {
         return true;
     }
 
-    bool HandleOperators(ConsoleKeyInfo key, out RefreshFlags flags) {
-        flags = RefreshFlags.Stack | RefreshFlags.Input;
+    bool HandleBinaryOperators(ConsoleKeyInfo key, out RefreshFlags refresh) {
+        var isNoneOrAlt = key.Modifiers == ConsoleModifiers.None ||
+            key.Modifiers == ConsoleModifiers.Alt;
+        var isShiftOrAltShift = key.Modifiers == ConsoleModifiers.Shift ||
+            key.Modifiers == (ConsoleModifiers.Shift | ConsoleModifiers.Alt);
+        var ctrl = key.Modifiers.HasFlag(ConsoleModifiers.Control);
+        var shift = key.Modifiers.HasFlag(ConsoleModifiers.Shift);
+        var alt = key.Modifiers.HasFlag(ConsoleModifiers.Alt);
+        var carry = _signed ?
+            _flags.HasFlag(ResultFlags.Overflow) :
+            _flags.HasFlag(ResultFlags.Carry);
+
+        refresh = RefreshFlags.Status | RefreshFlags.Stack | RefreshFlags.Input;
         switch (key.Key) {
-            case ConsoleKey.OemPlus when key.Modifiers == ConsoleModifiers.Shift:
-            case ConsoleKey.Add:
+            case ConsoleKey.OemPlus when isShiftOrAltShift:
+            case ConsoleKey.Add when isNoneOrAlt:
                 PushInput();
-                _calc.DoBinaryOp(BinaryOperation.Add);
+                _flags = _calc.DoBinaryOp(
+                    alt ? BinaryOperation.AddCarry : BinaryOperation.Add,
+                    carry,
+                    _flags);
                 break;
-            case ConsoleKey.OemMinus when key.Modifiers == ConsoleModifiers.Shift:
-            case ConsoleKey.Subtract:
+
+            case ConsoleKey.OemMinus when isShiftOrAltShift:
+            case ConsoleKey.Subtract when isNoneOrAlt:
                 PushInput();
-                _calc.DoBinaryOp(BinaryOperation.Subtract);
+                _flags = _calc.DoBinaryOp(
+                    alt ? BinaryOperation.SubtractBorrow : BinaryOperation.Subtract,
+                    carry,
+                    _flags);
                 break;
+
             case ConsoleKey.D8 when key.Modifiers == ConsoleModifiers.Shift:
-            case ConsoleKey.Multiply:
+            case ConsoleKey.Multiply when key.Modifiers == ConsoleModifiers.None:
                 PushInput();
-                _calc.DoBinaryOp(BinaryOperation.Multiply);
+                _flags = _calc.DoBinaryOp(BinaryOperation.Multiply, false, _flags);
                 break;
+
             case ConsoleKey.Oem2 when key.Modifiers == ConsoleModifiers.None:
-            case ConsoleKey.Divide:
-                PushInput();
-                _calc.DoBinaryOp(BinaryOperation.Divide);
-                break;
-            case ConsoleKey.D5 when key.Modifiers == ConsoleModifiers.Shift:
-                PushInput();
-                _calc.DoBinaryOp(BinaryOperation.Remainder);
-                break;
-            case ConsoleKey.D7 when key.Modifiers == ConsoleModifiers.Shift:
-                PushInput();
-                _calc.DoBinaryOp(BinaryOperation.And);
-                break;
-            case ConsoleKey.Oem5 when key.Modifiers == ConsoleModifiers.Shift:
-                PushInput();
-                _calc.DoBinaryOp(BinaryOperation.Or);
-                break;
-            case ConsoleKey.D6 when key.Modifiers == ConsoleModifiers.Shift:
-                PushInput();
-                _calc.DoBinaryOp(BinaryOperation.Xor);
-                break;
-            case ConsoleKey.OemComma when key.Modifiers == ConsoleModifiers.Shift:
-            case ConsoleKey.OemComma when key.Modifiers == (ConsoleModifiers.Shift | ConsoleModifiers.Alt):
-                PushInput();
-                _calc.DoBinaryOp(BinaryOperation.ShiftLeft);
-                break;
-            case ConsoleKey.OemPeriod when key.Modifiers == ConsoleModifiers.Shift:
-            case ConsoleKey.OemPeriod when key.Modifiers == (ConsoleModifiers.Shift | ConsoleModifiers.Alt): {
-                    var alt = key.Modifiers.HasFlag(ConsoleModifiers.Alt);
-                    var signExtend = (_sign == DisplaySignedness.Signed) ^ alt;
+            case ConsoleKey.Oem2 when key.Modifiers == ConsoleModifiers.Control:
+            case ConsoleKey.Divide when key.Modifiers == ConsoleModifiers.None:
+            case ConsoleKey.Divide when key.Modifiers == ConsoleModifiers.Control: {
+                    var signed = _signed ^ ctrl;
                     PushInput();
-                    if (signExtend)
-                        _calc.DoBinaryOp(BinaryOperation.ShiftRightArithmetic);
+                    if (signed)
+                        _flags = _calc.DoBinaryOp(BinaryOperation.SignedDivide, false, _flags);
                     else
-                        _calc.DoBinaryOp(BinaryOperation.ShiftRight);
+                        _flags = _calc.DoBinaryOp(BinaryOperation.UnsignedDivide, false, _flags);
                     break;
                 }
-            case ConsoleKey.Oem4 when key.Modifiers == ConsoleModifiers.Shift:
+
+            case ConsoleKey.D5 when key.Modifiers == ConsoleModifiers.Shift:
                 PushInput();
-                _calc.DoBinaryOp(BinaryOperation.RotateLeft);
+                _flags = _calc.DoBinaryOp(BinaryOperation.Remainder, false, _flags);
                 break;
-            case ConsoleKey.Oem6 when key.Modifiers == ConsoleModifiers.Shift:
+
+            case ConsoleKey.D7 when key.Modifiers == ConsoleModifiers.Shift:
                 PushInput();
-                _calc.DoBinaryOp(BinaryOperation.RotateRight);
+                _flags = _calc.DoBinaryOp(BinaryOperation.And, false, _flags);
                 break;
+
+            case ConsoleKey.Oem5 when key.Modifiers == ConsoleModifiers.Shift:
+                PushInput();
+                _flags = _calc.DoBinaryOp(BinaryOperation.Or, false, _flags);
+                break;
+
+            case ConsoleKey.D6 when key.Modifiers == ConsoleModifiers.Shift:
+                PushInput();
+                _flags = _calc.DoBinaryOp(BinaryOperation.Xor, false, _flags);
+                break;
+
+            case ConsoleKey.OemComma when shift:
+                PushInput();
+                _flags = _calc.DoBinaryOp(BinaryOperation.ShiftLeft, false, _flags);
+                break;
+
+            case ConsoleKey.OemPeriod when shift: {
+                    var signed = _signed ^ ctrl;
+                    PushInput();
+                    if (signed)
+                        _flags = _calc.DoBinaryOp(BinaryOperation.ShiftRightArithmetic, false, _flags);
+                    else
+                        _flags = _calc.DoBinaryOp(BinaryOperation.ShiftRight, false, _flags);
+                    break;
+                }
+
+            case ConsoleKey.Oem4 when isShiftOrAltShift:
+                PushInput();
+                _flags = _calc.DoBinaryOp(
+                    alt ? BinaryOperation.RotateLeftCarry : BinaryOperation.RotateLeft,
+                    carry,
+                    _flags);
+                break;
+
+            case ConsoleKey.Oem6 when isShiftOrAltShift:
+                PushInput();
+                _flags = _calc.DoBinaryOp(
+                    alt ? BinaryOperation.RotateRightCarry : BinaryOperation.RotateRight,
+                    carry,
+                    _flags);
+                break;
+
             case ConsoleKey.D3 when key.Modifiers == ConsoleModifiers.Shift:
                 PushInput();
-                _calc.DoBinaryOp(BinaryOperation.AlignUp);
+                _flags = _calc.DoBinaryOp(BinaryOperation.AlignUp, false, _flags);
                 break;
-            case ConsoleKey.D3 when key.Modifiers == (ConsoleModifiers.Shift | ConsoleModifiers.Alt):
+
+            case ConsoleKey.D3 when key.Modifiers == (ConsoleModifiers.Control | ConsoleModifiers.Shift):
                 PushInput();
-                _calc.DoBinaryOp(BinaryOperation.AlignDown);
+                _flags = _calc.DoBinaryOp(BinaryOperation.AlignDown, false, _flags);
                 break;
+            default:
+                return false;
+        }
+        return true;
+    }
+
+    bool HandleOperators(ConsoleKeyInfo key, out RefreshFlags refresh) {
+        refresh = RefreshFlags.Stack | RefreshFlags.Input;
+        switch (key.Key) {
             case ConsoleKey.Oem3 when key.Modifiers == ConsoleModifiers.Shift:
                 PushInput();
                 _calc.DoUnaryOp(UnaryOperation.Not);
@@ -612,11 +663,11 @@ class Program {
                 PushInput();
                 _calc.DoUnaryOp(UnaryOperation.PopCount);
                 break;
-            case ConsoleKey.D9 when key.Modifiers == (ConsoleModifiers.Shift | ConsoleModifiers.Alt):
+            case ConsoleKey.D9 when key.Modifiers == (ConsoleModifiers.Shift | ConsoleModifiers.Control):
                 PushInput();
                 _calc.DoUnaryOp(UnaryOperation.CountLeadingZeroes);
                 break;
-            case ConsoleKey.D0 when key.Modifiers == (ConsoleModifiers.Shift | ConsoleModifiers.Alt):
+            case ConsoleKey.D0 when key.Modifiers == (ConsoleModifiers.Shift | ConsoleModifiers.Control):
                 PushInput();
                 _calc.DoUnaryOp(UnaryOperation.CountTrailingZeroes);
                 break;
@@ -630,8 +681,8 @@ class Program {
         return true;
     }
 
-    bool HandleFakeNumpadKeys(ConsoleKeyInfo key, out RefreshFlags flags) {
-        flags = RefreshFlags.Input;
+    bool HandleFakeNumpadKeys(ConsoleKeyInfo key, out RefreshFlags refresh) {
+        refresh = RefreshFlags.Input;
         if (!_fakeNumpad || key.Modifiers != ConsoleModifiers.None)
             return false;
         switch (key.Key) {
@@ -666,8 +717,8 @@ class Program {
         return true;
     }
 
-    bool HandleInputKeys(ConsoleKeyInfo key, out RefreshFlags flags) {
-        flags = RefreshFlags.Input;
+    bool HandleInputKeys(ConsoleKeyInfo key, out RefreshFlags refresh) {
+        refresh = RefreshFlags.Input;
         if (key.Modifiers != ConsoleModifiers.None && key.Modifiers != ConsoleModifiers.Shift)
             return false;
         switch (key.Key) {
@@ -698,8 +749,8 @@ class Program {
         return true;
     }
 
-    bool HandleInputKeys2(ConsoleKeyInfo key, out RefreshFlags flags) {
-        flags = RefreshFlags.Input;
+    bool HandleInputKeys2(ConsoleKeyInfo key, out RefreshFlags refresh) {
+        refresh = RefreshFlags.Input;
         if (key.Modifiers != ConsoleModifiers.None)
             return false;
         switch (key.Key) {
@@ -857,7 +908,7 @@ class Program {
         StringBuilder sb,
         object value,
         IntegerFormat format,
-        DisplaySignedness sign,
+        bool signed,
         int group,
         PaddingMode paddingMode,
         bool upper) {
@@ -868,7 +919,7 @@ class Program {
         else {
             var size = GetPadSize(paddingMode);
 
-            if (sign == DisplaySignedness.Unsigned)
+            if (!signed)
                 value = IntConverter.ToUInt128(value);
 
             sb.AppendFormat(format switch {
@@ -926,23 +977,23 @@ class Program {
 
         Write("Hex:");
         sb.Clear();
-        FormatValueRaw(sb, value, IntegerFormat.Hexadecimal, DisplaySignedness.Unsigned, 4, _paddingMode, _upper);
+        FormatValueRaw(sb, value, IntegerFormat.Hexadecimal, false, 4, _paddingMode, _upper);
         Write(sb.ToString());
 
         Write("");
         Write("Dec (unsigned):");
         sb.Clear();
-        FormatValueRaw(sb, value, IntegerFormat.Decimal, DisplaySignedness.Unsigned, 3, _paddingMode, _upper);
+        FormatValueRaw(sb, value, IntegerFormat.Decimal, false, 3, _paddingMode, _upper);
         Write(sb.ToString());
         Write("Dec (signed):");
         sb.Clear();
-        FormatValueRaw(sb, value, IntegerFormat.Decimal, DisplaySignedness.Signed, 3, _paddingMode, _upper);
+        FormatValueRaw(sb, value, IntegerFormat.Decimal, true, 3, _paddingMode, _upper);
         Write(sb.ToString());
 
         Write("");
         Write("Oct:");
         sb.Clear();
-        FormatValueRaw(sb, value, IntegerFormat.Octal, _sign, 3, _paddingMode, _upper);
+        FormatValueRaw(sb, value, IntegerFormat.Octal, _signed, 3, _paddingMode, _upper);
         Write(sb.ToString());
 
         Write("");
@@ -983,7 +1034,7 @@ class Program {
                 sb,
                 entry.Object,
                 format: _format,
-                sign: _sign,
+                signed: _signed,
                 group: group,
                 paddingMode: _paddingMode,
                 upper: _upper);
@@ -1051,8 +1102,8 @@ class Program {
                     _ => throw new Exception("Unexpected format"),
                 };
                 Write(string.Format(
-                    "{0}{1,-6} (F2/F3/F4)  {2}  {3,5} {4,5} {5} (Ctrl+9/0/1)",
-                    _sign == DisplaySignedness.Signed ? "S" : "U",
+                    "{0}{1,-6} (F2/F3/F4)  {2}  {3,5} {4,5} {5} (Ctrl+9/0/1) {6}{7}",
+                    _signed ? "S" : "U",
                     _type,
                     mode,
                     _grouping ? "Group" : "Ungrp",
@@ -1062,7 +1113,9 @@ class Program {
                         PaddingMode.ZeroPadded => "Pad",
                         _ => throw new NotImplementedException(),
                     },
-                    _upper ? "Upper" : "Lower"));
+                    _upper ? "Upper" : "Lower",
+                    _flags.HasFlag(ResultFlags.Carry) ? "C" : " ",
+                    _flags.HasFlag(ResultFlags.Overflow) ? "O" : " "));
             }
 
             if (flags.HasFlag(RefreshFlags.Stack)) {

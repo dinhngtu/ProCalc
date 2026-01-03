@@ -7,7 +7,7 @@ public interface IRPNCalculator {
     void Push(IStackEntry entry);
     IStackEntry Peek();
     void Clear();
-    void DoBinaryOp(BinaryOperation op);
+    ResultFlags DoBinaryOp(BinaryOperation op, bool carryIn, ResultFlags prevFlags);
     void DoUnaryOp(UnaryOperation op);
     void DoStackOp(StackOperation op, int? input);
     IEnumerable<IStackEntry> GetStackItems(int max = int.MaxValue);

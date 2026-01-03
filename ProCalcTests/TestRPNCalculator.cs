@@ -26,7 +26,7 @@ public class TestRPNCalculator {
         var calc = new RPNCalculator<int>();
         Push(calc, 10);
         Push(calc, 20);
-        calc.DoBinaryOp(BinaryOperation.Add);
+        calc.DoBinaryOp(BinaryOperation.Add, false, 0);
         Assert.Equal(30, (int)calc.Peek().Object);
         Assert.Equal(1, calc.Count);
     }
@@ -36,7 +36,7 @@ public class TestRPNCalculator {
         var calc = new RPNCalculator<int>();
         Push(calc, 30);
         Push(calc, 10);
-        calc.DoBinaryOp(BinaryOperation.Subtract);
+        calc.DoBinaryOp(BinaryOperation.Subtract, false, 0);
         // 30 - 10 = 20. RPN: 30 10 -
         // First popped is 'b' (10), second is 'a' (30). Result = a - b.
         Assert.Equal(20, (int)calc.Peek().Object);
@@ -47,17 +47,26 @@ public class TestRPNCalculator {
         var calc = new RPNCalculator<int>();
         Push(calc, 5);
         Push(calc, 6);
-        calc.DoBinaryOp(BinaryOperation.Multiply);
+        calc.DoBinaryOp(BinaryOperation.Multiply, false, 0);
         Assert.Equal(30, (int)calc.Peek().Object);
     }
 
     [Fact]
-    public void TestDivide() {
+    public void TestUnsignedDivide() {
         var calc = new RPNCalculator<int>();
-        Push(calc, 20);
+        Push(calc, -1);
+        Push(calc, 2);
+        calc.DoBinaryOp(BinaryOperation.UnsignedDivide, false, 0);
+        Assert.Equal(int.MaxValue, (int)calc.Peek().Object);
+    }
+
+    [Fact]
+    public void TestSignedDivide() {
+        var calc = new RPNCalculator<int>();
         Push(calc, 4);
-        calc.DoBinaryOp(BinaryOperation.Divide);
-        Assert.Equal(5, (int)calc.Peek().Object);
+        Push(calc, -2);
+        calc.DoBinaryOp(BinaryOperation.SignedDivide, false, 0);
+        Assert.Equal(-2, (int)calc.Peek().Object);
     }
 
     [Fact]
@@ -88,7 +97,7 @@ public class TestRPNCalculator {
         var calc = new RPNCalculator<int>();
         Push(calc, 0b1100); // 12
         Push(calc, 0b1010); // 10
-        calc.DoBinaryOp(BinaryOperation.And);
+        calc.DoBinaryOp(BinaryOperation.And, false, 0);
         Assert.Equal(0b1000, (int)calc.Peek().Object); // 8
     }
 
@@ -97,7 +106,7 @@ public class TestRPNCalculator {
         var calc = new RPNCalculator<int>();
         Push(calc, 1);
         Push(calc, 2); // shift amount
-        calc.DoBinaryOp(BinaryOperation.ShiftLeft);
+        calc.DoBinaryOp(BinaryOperation.ShiftLeft, false, 0);
         Assert.Equal(4, (int)calc.Peek().Object);
     }
 
@@ -262,7 +271,8 @@ public class TestRPNCalculator {
         var calc = new RPNCalculator<int>();
         calc.Push(10, null, null);
         calc.Push(0, null, null);
-        Assert.ThrowsAny<Exception>(() => calc.DoBinaryOp(BinaryOperation.Divide));
+        Assert.ThrowsAny<Exception>(() => calc.DoBinaryOp(BinaryOperation.UnsignedDivide, false, 0));
+        Assert.ThrowsAny<Exception>(() => calc.DoBinaryOp(BinaryOperation.SignedDivide, false, 0));
         // Verify stack restored
         Assert.Equal(0, (int)calc.Peek().Object);
         calc.DoStackOp(StackOperation.Drop, 1);
@@ -303,5 +313,100 @@ public class TestRPNCalculator {
     public void TestPeekEmpty() {
         var calc = new RPNCalculator<int>();
         Assert.ThrowsAny<Exception>(() => calc.Peek());
+    }
+
+    [Fact]
+    public void TestAddCarry() {
+        // Use byte for easy carry testing
+        var calc = new RPNCalculator<sbyte>();
+
+        // 255 + 1 = 0, Carry: 1
+        calc.Push(255, null, null);
+        calc.Push(1, null, null);
+        var flags = calc.DoBinaryOp(BinaryOperation.AddCarry, false, 0);
+        Assert.Equal(0, (sbyte)calc.Peek().Object);
+        Assert.Equal(ResultFlags.Carry, flags);
+
+        // 255 + 0 + carryIn(true) = 0, Carry: 1
+        calc.Clear();
+        calc.Push(255, null, null);
+        calc.Push(0, null, null);
+        flags = calc.DoBinaryOp(BinaryOperation.AddCarry, true, 0);
+        Assert.Equal(0, (sbyte)calc.Peek().Object);
+        Assert.Equal(ResultFlags.Carry, flags);
+
+        // 255 + 255 + carryIn(true) = 255, Carry: 1
+        calc.Clear();
+        calc.Push(255, null, null);
+        calc.Push(255, null, null);
+        flags = calc.DoBinaryOp(BinaryOperation.AddCarry, true, 0);
+        Assert.Equal(-1, (sbyte)calc.Peek().Object);
+        Assert.Equal(ResultFlags.Carry, flags);
+
+        // 127 + 1 = 128, Carry: 0 (but signed overflow if it were sbyte)
+        calc.Clear();
+        calc.Push(127, null, null);
+        calc.Push(1, null, null);
+        flags = calc.DoBinaryOp(BinaryOperation.AddCarry, false, 0);
+        Assert.Equal(-128, (sbyte)calc.Peek().Object);
+        Assert.Equal(ResultFlags.Overflow, flags);
+    }
+
+    [Fact]
+    public void TestSubtractBorrow() {
+        var calc = new RPNCalculator<sbyte>();
+
+        // 0 - 1 = 255, Carry (Borrow): 1
+        calc.Push(0, null, null);
+        calc.Push(1, null, null);
+        var flags = calc.DoBinaryOp(BinaryOperation.SubtractBorrow, false, 0);
+        Assert.Equal(-1, (sbyte)calc.Peek().Object);
+        Assert.Equal(ResultFlags.Carry, flags);
+
+        // 0 - 0 - borrowIn(true) = 255, Carry (Borrow): 1
+        calc.Clear();
+        calc.Push(0, null, null);
+        calc.Push(0, null, null);
+        flags = calc.DoBinaryOp(BinaryOperation.SubtractBorrow, true, 0);
+        Assert.Equal(-1, (sbyte)calc.Peek().Object);
+        Assert.Equal(ResultFlags.Carry, flags);
+
+        // 1 - 0 - borrowIn(true) = 0, Carry (Borrow): 0
+        calc.Clear();
+        calc.Push(1, null, null);
+        calc.Push(0, null, null);
+        flags = calc.DoBinaryOp(BinaryOperation.SubtractBorrow, true, 0);
+        Assert.Equal(0, (sbyte)calc.Peek().Object);
+        Assert.Equal(0, (int)flags);
+
+        // 0 - 255 - borrowIn(true) = 0, Carry (Borrow): 1
+        calc.Clear();
+        calc.Push(0, null, null);
+        calc.Push(255, null, null);
+        flags = calc.DoBinaryOp(BinaryOperation.SubtractBorrow, true, 0);
+        Assert.Equal(0, (sbyte)calc.Peek().Object);
+        Assert.Equal(ResultFlags.Carry, flags);
+    }
+
+    [Fact]
+    public void TestAddOverflow() {
+        var calc = new RPNCalculator<sbyte>();
+
+        // 127 + 1 = -128, Overflow: 1, Carry: 0
+        calc.Push((sbyte)127, null, null);
+        calc.Push((sbyte)1, null, null);
+        var flags = calc.DoBinaryOp(BinaryOperation.Add, false, 0);
+        Assert.Equal(-128, (sbyte)calc.Peek().Object);
+        Assert.True(flags.HasFlag(ResultFlags.Overflow));
+        Assert.False(flags.HasFlag(ResultFlags.Carry));
+
+        // -128 + -1 = 127, Overflow: 1, Carry: 1
+        calc.Clear();
+        calc.Push((sbyte)-128, null, null);
+        calc.Push((sbyte)-1, null, null);
+        flags = calc.DoBinaryOp(BinaryOperation.Add, false, 0);
+        Assert.Equal(127, (sbyte)calc.Peek().Object);
+        Assert.True(flags.HasFlag(ResultFlags.Overflow));
+        Assert.True(flags.HasFlag(ResultFlags.Carry));
     }
 }

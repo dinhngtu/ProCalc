@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
@@ -52,43 +53,187 @@ public class RPNCalculator<T> : IRPNCalculator
         _stack.Clear();
     }
 
+    int GetShiftAmount(T bits) {
+        var amount = int.CreateChecked(bits);
+        if (amount < 0)
+            throw new ArgumentException("Cannot shift by negative amounts");
+        return amount;
+    }
+
     T AlignUp(T value, T bits) {
-        var mask = MaskRight(int.CreateChecked(bits));
+        var mask = MaskRight(GetShiftAmount(bits));
         return (value + mask) & ~mask;
     }
 
     T AlignDown(T value, T bits) {
-        var mask = MaskRight(int.CreateChecked(bits));
+        var mask = MaskRight(GetShiftAmount(bits));
         return value & ~mask;
     }
 
-    public void DoBinaryOp(BinaryOperation op) {
+    bool GetBit(T value, int bit) {
+        return ((value >> bit) & T.One) != T.Zero;
+    }
+
+    public ResultFlags DoBinaryOp(BinaryOperation op, bool carryIn, ResultFlags prevFlags) {
         if (_stack.Count < 2)
             throw new InvalidOperationException("Not enough operands");
 
         var b = _stack.PopFront();
         var a = _stack.PopFront();
         T result;
+        ResultFlags flags = 0;
 
         try {
-            result = op switch {
-                BinaryOperation.Add => a.Value + b.Value,
-                BinaryOperation.Subtract => a.Value - b.Value,
-                BinaryOperation.Multiply => a.Value * b.Value,
-                BinaryOperation.Divide => a.Value / b.Value,
-                BinaryOperation.Remainder => a.Value % b.Value,
-                BinaryOperation.And => a.Value & b.Value,
-                BinaryOperation.Or => a.Value | b.Value,
-                BinaryOperation.Xor => a.Value ^ b.Value,
-                BinaryOperation.ShiftLeft => a.Value << int.CreateChecked(b.Value),
-                BinaryOperation.ShiftRight => a.Value >>> int.CreateChecked(b.Value),
-                BinaryOperation.ShiftRightArithmetic => a.Value >> int.CreateChecked(b.Value),
-                BinaryOperation.RotateLeft => T.RotateLeft(a.Value, int.CreateChecked(b.Value)),
-                BinaryOperation.RotateRight => T.RotateRight(a.Value, int.CreateChecked(b.Value)),
-                BinaryOperation.AlignUp => AlignUp(a.Value, b.Value),
-                BinaryOperation.AlignDown => AlignDown(a.Value, b.Value),
-                _ => throw new NotSupportedException(nameof(op)),
-            };
+            switch (op) {
+                case BinaryOperation.Add:
+                case BinaryOperation.AddCarry:
+                    if (op == BinaryOperation.Add)
+                        carryIn = false;
+                    result = a.Value + b.Value + (carryIn ? T.One : T.Zero);
+                    if (IntConverter.UnsignedLess(result, a.Value) || (carryIn && result == a.Value))
+                        flags = ResultFlags.Carry;
+                    if (((result ^ a.Value) & (result ^ b.Value)) < T.Zero)
+                        flags |= ResultFlags.Overflow;
+                    break;
+
+                case BinaryOperation.Subtract:
+                case BinaryOperation.SubtractBorrow:
+                    if (op == BinaryOperation.Subtract)
+                        carryIn = false;
+                    result = a.Value - b.Value - (carryIn ? T.One : T.Zero);
+                    if (IntConverter.UnsignedLess(a.Value, result) || (carryIn && result == a.Value))
+                        flags = ResultFlags.Carry;
+                    if (((a.Value ^ b.Value) & (result ^ a.Value)) < T.Zero)
+                        flags |= ResultFlags.Overflow;
+                    break;
+
+                case BinaryOperation.Multiply:
+                    if (IntConverter.UnsignedMultiplyOverflows(a.Value, b.Value))
+                        flags = ResultFlags.Carry;
+                    try {
+                        result = checked(a.Value * b.Value);
+                    }
+                    catch (OverflowException) {
+                        flags |= ResultFlags.Overflow;
+                        result = a.Value * b.Value;
+                    }
+                    break;
+
+                case BinaryOperation.UnsignedDivide:
+                    result = IntConverter.UnsignedDivide(a.Value, b.Value);
+                    break;
+
+                case BinaryOperation.SignedDivide:
+                    result = a.Value / b.Value;
+                    break;
+
+                case BinaryOperation.Remainder:
+                    result = a.Value % b.Value;
+                    break;
+
+                case BinaryOperation.And:
+                    flags = prevFlags;
+                    result = a.Value & b.Value;
+                    break;
+                case BinaryOperation.Or:
+                    flags = prevFlags;
+                    result = a.Value | b.Value;
+                    break;
+                case BinaryOperation.Xor:
+                    flags = prevFlags;
+                    result = a.Value ^ b.Value;
+                    break;
+
+                case BinaryOperation.ShiftLeft: {
+                        var amount = GetShiftAmount(b.Value);
+                        flags = amount switch {
+                            0 => prevFlags,
+                            _ when amount == WordBytes * 8 => GetBit(a.Value, 0) ?
+                                ResultFlags.Carry | ResultFlags.Overflow :
+                                0,
+                            _ when amount > WordBytes * 8 => 0,
+                            _ => GetBit(a.Value, WordBytes * 8 - amount - 1) ?
+                                ResultFlags.Carry | ResultFlags.Overflow :
+                                0,
+                        };
+                        result = amount switch {
+                            _ when amount >= WordBytes * 8 => T.Zero,
+                            _ => a.Value << amount,
+                        };
+                        break;
+                    }
+
+                case BinaryOperation.ShiftRight: {
+                        var amount = GetShiftAmount(b.Value);
+                        flags = amount switch {
+                            0 => prevFlags,
+                            _ when amount == WordBytes * 8 => GetBit(a.Value, WordBytes * 8 - 1) ?
+                                ResultFlags.Carry | ResultFlags.Overflow :
+                                0,
+                            _ when amount > WordBytes * 8 => 0,
+                            _ => GetBit(a.Value, amount - 1) ?
+                                ResultFlags.Carry | ResultFlags.Overflow :
+                                0,
+                        };
+                        result = amount switch {
+                            _ when amount >= WordBytes * 8 => T.Zero,
+                            _ => a.Value >>> amount,
+                        };
+                        break;
+                    }
+
+                case BinaryOperation.ShiftRightArithmetic: {
+                        var amount = GetShiftAmount(b.Value);
+                        flags = amount switch {
+                            0 => prevFlags,
+                            _ when amount == WordBytes * 8 => GetBit(a.Value, WordBytes * 8 - 1) ?
+                                ResultFlags.Carry | ResultFlags.Overflow :
+                                0,
+                            _ when amount > WordBytes * 8 => 0,
+                            _ => GetBit(a.Value, amount - 1) ?
+                                ResultFlags.Carry | ResultFlags.Overflow :
+                                0,
+                        };
+                        result = amount switch {
+                            _ when amount >= WordBytes * 8 => T.Zero,
+                            _ => a.Value >> amount,
+                        };
+                        break;
+                    }
+
+                case BinaryOperation.RotateLeft: {
+                        var amount = GetShiftAmount(b.Value);
+                        flags = amount switch {
+                            0 => prevFlags,
+                            _ => GetBit(a.Value, WordBytes * 8 - (amount % (WordBytes * 8)) - 1) ?
+                                ResultFlags.Carry | ResultFlags.Overflow :
+                                0,
+                        };
+                        result = T.RotateLeft(a.Value, amount);
+                        break;
+                    }
+
+                case BinaryOperation.RotateRight: {
+                        var amount = GetShiftAmount(b.Value);
+                        flags = amount switch {
+                            0 => prevFlags,
+                            _ => GetBit(a.Value, (amount + WordBytes * 8 - 1) % (WordBytes * 8)) ?
+                                ResultFlags.Carry | ResultFlags.Overflow :
+                                0,
+                        };
+                        result = T.RotateRight(a.Value, amount);
+                        break;
+                    }
+
+                case BinaryOperation.AlignUp:
+                    result = AlignUp(a.Value, b.Value);
+                    break;
+                case BinaryOperation.AlignDown:
+                    result = AlignDown(a.Value, b.Value);
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
         }
         catch {
             _stack.PushFront(a);
@@ -100,6 +245,7 @@ public class RPNCalculator<T> : IRPNCalculator
             Comment = a.Comment,
             AltComment = b.Comment,
         });
+        return flags;
     }
 
     T MaskLeft(int val) {
@@ -285,15 +431,15 @@ public class RPNCalculator<T> : IRPNCalculator
             throw new ArgumentOutOfRangeException(nameof(type));
     }
 
-    static T ParseOctal(IEnumerable<char> v) {
-        var result = T.Zero;
-        var eight = T.CreateTruncating(8);
+    static UInt128 ParseOctal(IEnumerable<char> v) {
+        var result = UInt128.Zero;
+        var eight = UInt128.CreateTruncating(8);
         foreach (var c in v) {
             var cv = "01234567".IndexOf(c);
             if (cv < 0)
                 throw new InvalidDataException("Invalid octal string");
             unchecked {
-                result = result * eight + T.CreateChecked(cv);
+                result = result * eight + UInt128.CreateChecked(cv);
             }
         }
         return result;
@@ -376,10 +522,10 @@ public class RPNCalculator<T> : IRPNCalculator
                 scratch.Remove(scratch.Length - 1, 1);
         }
         var raw = realFormat switch {
-            IntegerFormat.Hexadecimal => T.Parse(scratch.ToString(), NumberStyles.AllowHexSpecifier, null),
-            IntegerFormat.Decimal => T.Parse(scratch.ToString(), NumberStyles.None, null),
+            IntegerFormat.Hexadecimal => UInt128.Parse(scratch.ToString(), NumberStyles.AllowHexSpecifier, null),
+            IntegerFormat.Decimal => UInt128.Parse(scratch.ToString(), NumberStyles.None, null),
             IntegerFormat.Octal => ParseOctal(scratch.ToString()),
-            IntegerFormat.Binary => T.Parse(scratch.ToString(), NumberStyles.AllowBinarySpecifier, null),
+            IntegerFormat.Binary => UInt128.Parse(scratch.ToString(), NumberStyles.AllowBinarySpecifier, null),
             _ => throw new NotImplementedException(),
         };
         if (negative) {

@@ -14,7 +14,7 @@ public static class IntConverter {
         };
     }
 
-    public static T ToCalculatorTypeTruncating<T>(object value) where T : IBinaryInteger<T>, IMinMaxValue<T> {
+    public static T ToCalculatorTypeTruncating<T>(object value) where T : INumberBase<T> {
         return value switch {
             Int128 s => T.CreateTruncating(s),
             long s => T.CreateTruncating(s),
@@ -31,8 +31,8 @@ public static class IntConverter {
     }
 
     public static U ToCalculatorTypeUnsigned<T, U>(T x)
-        where T : IBinaryInteger<T>, IMinMaxValue<T>
-        where U : IBinaryInteger<U>, IMinMaxValue<U> {
+        where T : INumberBase<T>
+        where U : INumberBase<U> {
         return x switch {
             Int128 => U.CreateTruncating(UInt128.CreateTruncating(x)),
             long => U.CreateTruncating(ulong.CreateTruncating(x)),
@@ -41,5 +41,62 @@ public static class IntConverter {
             sbyte => U.CreateTruncating(byte.CreateTruncating(x)),
             _ => throw new InvalidCastException(),
         };
+    }
+
+    public static bool UnsignedLess<T>(T a, T b) where T : INumberBase<T> {
+        if (typeof(T) == typeof(Int128)) {
+            return UInt128.CreateTruncating(a) < UInt128.CreateTruncating(b);
+        }
+        else if (typeof(T) == typeof(long)) {
+            return ulong.CreateTruncating(a) < ulong.CreateTruncating(b);
+        }
+        else if (typeof(T) == typeof(int)) {
+            return uint.CreateTruncating(a) < uint.CreateTruncating(b);
+        }
+        else if (typeof(T) == typeof(short)) {
+            return ushort.CreateTruncating(a) < ushort.CreateTruncating(b);
+        }
+        else if (typeof(T) == typeof(sbyte)) {
+            return byte.CreateTruncating(a) < byte.CreateTruncating(b);
+        }
+        else {
+            throw new InvalidCastException();
+        }
+    }
+
+    public static bool UnsignedMultiplyOverflows<T>(T a, T b) where T : INumberBase<T> {
+        var la = ToUInt128(a);
+        var lb = ToUInt128(b);
+        UInt128 result;
+        try {
+            result = checked(la * lb);
+        }
+        catch (OverflowException) {
+            return true;
+        }
+        if (typeof(T) == typeof(Int128)) {
+            return false;
+        }
+        else if (typeof(T) == typeof(long)) {
+            return result > UInt128.CreateTruncating(ulong.MaxValue);
+        }
+        else if (typeof(T) == typeof(int)) {
+            return result > UInt128.CreateTruncating(uint.MaxValue);
+        }
+        else if (typeof(T) == typeof(short)) {
+            return result > UInt128.CreateTruncating(ushort.MaxValue);
+        }
+        else if (typeof(T) == typeof(sbyte)) {
+            return result > UInt128.CreateTruncating(byte.MaxValue);
+        }
+        else {
+            throw new InvalidCastException();
+        }
+    }
+
+    public static T UnsignedDivide<T>(T a, T b) where T : INumberBase<T> {
+        var la = ToUInt128(a);
+        var lb = ToUInt128(b);
+        return T.CreateTruncating(la / lb);
     }
 }
