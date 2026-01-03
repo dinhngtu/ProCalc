@@ -13,7 +13,6 @@ public enum BinaryOperation {
     Or,
     Xor,
     ShiftLeft,
-    ShiftLeftCarry,
     ShiftRight,
     ShiftRightArithmetic,
     RotateLeft,
