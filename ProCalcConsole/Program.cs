@@ -438,25 +438,26 @@ class Program {
             case ConsoleKey.DownArrow when key.Modifiers == ConsoleModifiers.None:
                 _calc.DoStackOp(StackOperation.Roll, 1);
                 break;
-            case ConsoleKey.Delete when key.Modifiers == ConsoleModifiers.None:
-                if (_input.Length != 0)
-                    throw new InvalidOperationException("Still editing");
+            case ConsoleKey.Delete when key.Modifiers == ConsoleModifiers.None: {
+                    if (_input.Length != 0)
+                        throw new InvalidOperationException("Still editing");
 
-                var entry = _calc.Peek();
-                _calc.DoStackOp(StackOperation.Drop, 1);
-                try {
-                    FormatValueRaw(_input, entry.Object, _format, _signed, 0, PaddingMode.None, _upper);
-                    if (entry.Comment != null) {
-                        _input.Append(';');
-                        _input.Append(entry.Comment);
+                    var entry = _calc.Peek();
+                    _calc.DoStackOp(StackOperation.Drop, 1);
+                    try {
+                        FormatValueRaw(_input, entry.Object, _format, _signed, 0, PaddingMode.None, _upper);
+                        if (entry.Comment != null) {
+                            _input.Append(';');
+                            _input.Append(entry.Comment);
+                        }
                     }
+                    catch {
+                        _calc.Push(entry);
+                        throw;
+                    }
+                    _inputCursor = _input.Length;
+                    break;
                 }
-                catch {
-                    _calc.Push(entry);
-                    throw;
-                }
-                _inputCursor = _input.Length;
-                break;
             case ConsoleKey.Delete when key.Modifiers == ConsoleModifiers.Shift:
                 if (_input.Length == 0) {
                     _calc.DoStackOp(StackOperation.Drop, 1);
@@ -522,8 +523,7 @@ class Program {
                 }
                 break;
             case ConsoleKey.P when key.Modifiers == ConsoleModifiers.None:
-                var val = _calc.Peek();
-                PrintValue(val.Object);
+                PrintValue(_calc.Peek().Object);
                 refresh = RefreshFlags.Screen;
                 break;
             default:
@@ -576,15 +576,13 @@ class Program {
             case ConsoleKey.Oem2 when key.Modifiers == ConsoleModifiers.None:
             case ConsoleKey.Oem2 when key.Modifiers == ConsoleModifiers.Control:
             case ConsoleKey.Divide when key.Modifiers == ConsoleModifiers.None:
-            case ConsoleKey.Divide when key.Modifiers == ConsoleModifiers.Control: {
-                    var signed = _signed ^ ctrl;
-                    PushInput();
-                    if (signed)
-                        _flags = _calc.DoBinaryOp(BinaryOperation.SignedDivide, false, _flags);
-                    else
-                        _flags = _calc.DoBinaryOp(BinaryOperation.UnsignedDivide, false, _flags);
-                    break;
-                }
+            case ConsoleKey.Divide when key.Modifiers == ConsoleModifiers.Control:
+                PushInput();
+                if (_signed ^ ctrl)
+                    _flags = _calc.DoBinaryOp(BinaryOperation.SignedDivide, false, _flags);
+                else
+                    _flags = _calc.DoBinaryOp(BinaryOperation.UnsignedDivide, false, _flags);
+                break;
 
             case ConsoleKey.D5 when key.Modifiers == ConsoleModifiers.Shift:
                 PushInput();
@@ -611,15 +609,13 @@ class Program {
                 _flags = _calc.DoBinaryOp(BinaryOperation.ShiftLeft, false, _flags);
                 break;
 
-            case ConsoleKey.OemPeriod when shift: {
-                    var signed = _signed ^ ctrl;
-                    PushInput();
-                    if (signed)
-                        _flags = _calc.DoBinaryOp(BinaryOperation.ShiftRightArithmetic, false, _flags);
-                    else
-                        _flags = _calc.DoBinaryOp(BinaryOperation.ShiftRight, false, _flags);
-                    break;
-                }
+            case ConsoleKey.OemPeriod when shift:
+                PushInput();
+                if (_signed ^ ctrl)
+                    _flags = _calc.DoBinaryOp(BinaryOperation.ShiftRightArithmetic, false, _flags);
+                else
+                    _flags = _calc.DoBinaryOp(BinaryOperation.ShiftRight, false, _flags);
+                break;
 
             case ConsoleKey.Oem4 when isShiftOrAltShift:
                 PushInput();
