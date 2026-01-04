@@ -31,6 +31,7 @@ public enum UnaryOperation {
     CountLeadingZeroes,
     CountTrailingZeroes,
     Pow2,
+    ByteSwap,
 }
 
 public enum StackOperation {

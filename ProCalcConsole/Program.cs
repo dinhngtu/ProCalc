@@ -252,6 +252,7 @@ class Program {
                     `&|^~` = bitwise logic                   Shift+4 = popcount
                     Shift+9/0 = mask left/right              Ctrl+Shift+9/0 = count lead/trail 0s
                     Shift+2 = pow2                           Shift+3/Ctrl+Shift+3 = align up/down
+                    Alt+Shift+` = byteswap
 
                     """);
                 Pause();
@@ -700,6 +701,10 @@ class Program {
             case ConsoleKey.D2 when key.Modifiers == ConsoleModifiers.Shift:
                 PushInput();
                 _calc.DoUnaryOp(UnaryOperation.Pow2);
+                break;
+            case ConsoleKey.Oem3 when key.Modifiers == (ConsoleModifiers.Shift | ConsoleModifiers.Alt):
+                PushInput();
+                _calc.DoUnaryOp(UnaryOperation.ByteSwap);
                 break;
             default:
                 return false;

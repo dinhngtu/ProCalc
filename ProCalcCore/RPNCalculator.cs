@@ -1,4 +1,3 @@
-using System;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
@@ -274,6 +273,12 @@ public class RPNCalculator<T> : IRPNCalculator
         return (T.One << val) - T.One;
     }
 
+    T ByteSwap(T val) {
+        var tmp = new byte[WordBytes];
+        val.WriteBigEndian(tmp);
+        return T.ReadLittleEndian(tmp, false);
+    }
+
     public void DoUnaryOp(UnaryOperation op) {
         if (_stack.Count < 1)
             throw new InvalidOperationException("Not enough operands");
@@ -290,6 +295,7 @@ public class RPNCalculator<T> : IRPNCalculator
                 UnaryOperation.CountLeadingZeroes => T.LeadingZeroCount(val.Value),
                 UnaryOperation.CountTrailingZeroes => T.TrailingZeroCount(val.Value),
                 UnaryOperation.Pow2 => T.One << int.CreateChecked(val.Value),
+                UnaryOperation.ByteSwap => ByteSwap(val.Value),
                 _ => throw new NotSupportedException(nameof(op)),
             };
         }
