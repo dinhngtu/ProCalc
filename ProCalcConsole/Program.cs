@@ -18,6 +18,7 @@ class Program {
     int _inputCursor = 0;
     int _inputScroll = 0;
     bool _comment = false;
+    InputLineMode _ilm = InputLineMode.Normal;
     bool _exit = false;
 
     ResultFlags _flags = 0;
@@ -382,6 +383,8 @@ class Program {
                 _inputCursor = _input.Length;
                 break;
             case ConsoleKey.Escape when key.Modifiers == ConsoleModifiers.None:
+                if (_ilm == InputLineMode.Normal)
+                    ResetInput();
                 break;
             case ConsoleKey.W when key.Modifiers == ConsoleModifiers.Control:
                 ResetInput();
@@ -1152,10 +1155,12 @@ class Program {
             if (flags.HasFlag(RefreshFlags.Input)) {
                 Console.SetCursorPosition(0, Console.WindowHeight - 1);
                 if (ex != null) {
+                    _ilm = InputLineMode.Exception;
                     Write(ex.Message, width: Console.WindowWidth - 1);
                     Console.Beep();
                 }
                 else {
+                    _ilm = InputLineMode.Normal;
                     PrintInputLine();
                 }
             }
