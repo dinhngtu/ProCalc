@@ -184,7 +184,7 @@ class Program {
                     HandleEditKeys(key, out refresh) ||
                     HandleCommentKeys(key, out refresh) ||
                     HandleStackKeys(key, out refresh) ||
-                    HandleBinaryOperators(key, out refresh) ||
+                    HandleBinaryOrCarryOperators(key, out refresh) ||
                     HandleOperators(key, out refresh) ||
                     HandleFakeNumpadKeys(key, out refresh) ||
                     HandleInputKeys(key, out refresh) ||
@@ -244,6 +244,7 @@ class Program {
                     Carry operators (add Alt to use carry):
                     `+_` = add/subtract                      `{}` = rotate left/right
                     `<>` = shift (Ctrl = invert S/U)
+                    r = push CF/OF (Shift = invert S/U)      Ctrl+r = clear flags
 
                     Other operators:
                     `*%` = mul/rem                           `/` = div (Ctrl = invert S/U)
@@ -527,7 +528,7 @@ class Program {
         return true;
     }
 
-    bool HandleBinaryOperators(ConsoleKeyInfo key, out RefreshFlags refresh) {
+    bool HandleBinaryOrCarryOperators(ConsoleKeyInfo key, out RefreshFlags refresh) {
         var isNoneOrAlt = key.Modifiers == ConsoleModifiers.None ||
             key.Modifiers == ConsoleModifiers.Alt;
         var isShiftOrAltShift = key.Modifiers == ConsoleModifiers.Shift ||
@@ -535,9 +536,12 @@ class Program {
         var ctrl = key.Modifiers.HasFlag(ConsoleModifiers.Control);
         var shift = key.Modifiers.HasFlag(ConsoleModifiers.Shift);
         var alt = key.Modifiers.HasFlag(ConsoleModifiers.Alt);
-        var carry = _signed ?
+        var co = _signed ?
             _flags.HasFlag(ResultFlags.Overflow) :
             _flags.HasFlag(ResultFlags.Carry);
+        var oc = _signed ?
+            _flags.HasFlag(ResultFlags.Carry) :
+            _flags.HasFlag(ResultFlags.Overflow);
 
         refresh = RefreshFlags.Status | RefreshFlags.Stack | RefreshFlags.Input;
         switch (key.Key) {
@@ -546,7 +550,7 @@ class Program {
                 PushInput();
                 _flags = _calc.DoBinaryOp(
                     alt ? BinaryOperation.AddCarry : BinaryOperation.Add,
-                    carry,
+                    co,
                     _flags);
                 break;
 
@@ -555,7 +559,7 @@ class Program {
                 PushInput();
                 _flags = _calc.DoBinaryOp(
                     alt ? BinaryOperation.SubtractBorrow : BinaryOperation.Subtract,
-                    carry,
+                    co,
                     _flags);
                 break;
 
@@ -617,7 +621,7 @@ class Program {
                 PushInput();
                 _flags = _calc.DoBinaryOp(
                     alt ? BinaryOperation.RotateLeftCarry : BinaryOperation.RotateLeft,
-                    carry,
+                    co,
                     _flags);
                 break;
 
@@ -625,7 +629,7 @@ class Program {
                 PushInput();
                 _flags = _calc.DoBinaryOp(
                     alt ? BinaryOperation.RotateRightCarry : BinaryOperation.RotateRight,
-                    carry,
+                    co,
                     _flags);
                 break;
 
@@ -638,6 +642,25 @@ class Program {
                 PushInput();
                 _flags = _calc.DoBinaryOp(BinaryOperation.AlignDown, false, _flags);
                 break;
+
+            case ConsoleKey.R when key.Modifiers == ConsoleModifiers.None:
+            case ConsoleKey.R when key.Modifiers == ConsoleModifiers.Shift:
+                if (_input.Length != 0)
+                    throw new InvalidOperationException("Still editing");
+
+                _calc.Push(
+                    (key.Modifiers.HasFlag(ConsoleModifiers.Shift) ? oc : co) ? 1 : 0,
+                    null,
+                    null);
+                break;
+
+            case ConsoleKey.R when key.Modifiers == ConsoleModifiers.Control:
+                if (_input.Length != 0)
+                    throw new InvalidOperationException("Still editing");
+
+                _flags = 0;
+                break;
+
             default:
                 return false;
         }

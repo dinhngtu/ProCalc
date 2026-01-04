@@ -217,6 +217,32 @@ public class RPNCalculator<T> : IRPNCalculator
                         break;
                     }
 
+                case BinaryOperation.RotateLeftCarry:
+                case BinaryOperation.RotateRightCarry: {
+                        var amount = GetShiftAmount(b.Value) % (WordBits + 1);
+                        if (op == BinaryOperation.RotateLeftCarry)
+                            amount = WordBits + 1 - amount;
+
+                        var residual = WordBits - amount;
+                        if (residual > 0) {
+                            flags = GetBit(a.Value, amount - 1) ?
+                                ResultFlags.Carry | ResultFlags.Overflow :
+                                0;
+                            result = (a.Value & MaskLeft(residual)) >>> amount;
+                            if (residual + 1 < WordBits)
+                                result |= (a.Value & MaskRight(amount - 1)) << (residual + 1);
+                            if (carryIn)
+                                result |= T.One << residual;
+                        }
+                        else {
+                            flags = GetBit(a.Value, WordBits - 1) ?
+                                ResultFlags.Carry | ResultFlags.Overflow :
+                                0;
+                            result = (a.Value << 1) | (carryIn ? T.One : T.Zero);
+                        }
+                        break;
+                    }
+
                 case BinaryOperation.AlignUp:
                     result = AlignUp(a.Value, b.Value);
                     break;
