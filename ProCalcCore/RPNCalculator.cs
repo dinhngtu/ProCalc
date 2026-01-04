@@ -23,6 +23,7 @@ public class RPNCalculator<T> : IRPNCalculator
     }
 
     public int WordBytes => T.Zero.GetByteCount();
+    int WordBits => WordBytes * 8;
 
     public int Count => _stack.Count;
 
@@ -148,18 +149,15 @@ public class RPNCalculator<T> : IRPNCalculator
                         var amount = GetShiftAmount(b.Value);
                         flags = amount switch {
                             0 => prevFlags,
-                            _ when amount == WordBytes * 8 => GetBit(a.Value, 0) ?
+                            _ when amount == WordBits => GetBit(a.Value, 0) ?
                                 ResultFlags.Carry | ResultFlags.Overflow :
                                 0,
-                            _ when amount > WordBytes * 8 => 0,
-                            _ => GetBit(a.Value, WordBytes * 8 - amount - 1) ?
+                            _ when amount > WordBits => 0,
+                            _ => GetBit(a.Value, WordBits - amount - 1) ?
                                 ResultFlags.Carry | ResultFlags.Overflow :
                                 0,
                         };
-                        result = amount switch {
-                            _ when amount >= WordBytes * 8 => T.Zero,
-                            _ => a.Value << amount,
-                        };
+                        result = amount < WordBits ? a.Value << amount : T.Zero;
                         break;
                     }
 
@@ -167,18 +165,15 @@ public class RPNCalculator<T> : IRPNCalculator
                         var amount = GetShiftAmount(b.Value);
                         flags = amount switch {
                             0 => prevFlags,
-                            _ when amount == WordBytes * 8 => GetBit(a.Value, WordBytes * 8 - 1) ?
+                            _ when amount == WordBits => GetBit(a.Value, WordBits - 1) ?
                                 ResultFlags.Carry | ResultFlags.Overflow :
                                 0,
-                            _ when amount > WordBytes * 8 => 0,
+                            _ when amount > WordBits => 0,
                             _ => GetBit(a.Value, amount - 1) ?
                                 ResultFlags.Carry | ResultFlags.Overflow :
                                 0,
                         };
-                        result = amount switch {
-                            _ when amount >= WordBytes * 8 => T.Zero,
-                            _ => a.Value >>> amount,
-                        };
+                        result = amount < WordBits ? a.Value >>> amount : T.Zero;
                         break;
                     }
 
@@ -186,18 +181,15 @@ public class RPNCalculator<T> : IRPNCalculator
                         var amount = GetShiftAmount(b.Value);
                         flags = amount switch {
                             0 => prevFlags,
-                            _ when amount == WordBytes * 8 => GetBit(a.Value, WordBytes * 8 - 1) ?
+                            _ when amount == WordBits => GetBit(a.Value, WordBits - 1) ?
                                 ResultFlags.Carry | ResultFlags.Overflow :
                                 0,
-                            _ when amount > WordBytes * 8 => 0,
+                            _ when amount > WordBits => 0,
                             _ => GetBit(a.Value, amount - 1) ?
                                 ResultFlags.Carry | ResultFlags.Overflow :
                                 0,
                         };
-                        result = amount switch {
-                            _ when amount >= WordBytes * 8 => T.Zero,
-                            _ => a.Value >> amount,
-                        };
+                        result = amount < WordBits ? a.Value >> amount : T.Zero;
                         break;
                     }
 
@@ -205,7 +197,7 @@ public class RPNCalculator<T> : IRPNCalculator
                         var amount = GetShiftAmount(b.Value);
                         flags = amount switch {
                             0 => prevFlags,
-                            _ => GetBit(a.Value, WordBytes * 8 - (amount % (WordBytes * 8)) - 1) ?
+                            _ => GetBit(a.Value, WordBits - amount % WordBits - 1) ?
                                 ResultFlags.Carry | ResultFlags.Overflow :
                                 0,
                         };
@@ -217,7 +209,7 @@ public class RPNCalculator<T> : IRPNCalculator
                         var amount = GetShiftAmount(b.Value);
                         flags = amount switch {
                             0 => prevFlags,
-                            _ => GetBit(a.Value, (amount + WordBytes * 8 - 1) % (WordBytes * 8)) ?
+                            _ => GetBit(a.Value, (amount + WordBits - 1) % WordBits) ?
                                 ResultFlags.Carry | ResultFlags.Overflow :
                                 0,
                         };
@@ -249,7 +241,7 @@ public class RPNCalculator<T> : IRPNCalculator
     }
 
     T MaskLeft(int val) {
-        return ((T.One << val) - T.One) << (WordBytes * 8 - val);
+        return MaskRight(val) << (WordBits - val);
     }
 
     T MaskRight(int val) {
