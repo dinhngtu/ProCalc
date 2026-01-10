@@ -1075,8 +1075,8 @@ class Program {
     void PrintStack(IRPNCalculator calc) {
         var printable = Console.WindowHeight - 2;
         if (printable < calc.Count) {
-            Write("...");
             printable--;
+            Write(string.Format("...{0}", calc.Count - printable));
         }
 
         var stackItems = calc.GetStackItems(Math.Min(printable, calc.Count)).ToList();
