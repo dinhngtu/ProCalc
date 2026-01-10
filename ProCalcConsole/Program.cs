@@ -345,6 +345,10 @@ class Program {
             case ConsoleKey.D2 when key.Modifiers == ConsoleModifiers.Control:
                 _index = !_index;
                 break;
+            case ConsoleKey.LeftWindows:
+            case ConsoleKey.RightWindows:
+                refresh = RefreshFlags.None;
+                break;
             default:
                 return false;
         }
