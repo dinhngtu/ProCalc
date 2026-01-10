@@ -1,8 +1,10 @@
 using ProCalcConsole;
 using ProCalcCore;
 using System.Globalization;
+using System.Runtime.Versioning;
 using System.Text;
 
+[SupportedOSPlatform("windows")]
 class Program {
     IRPNCalculator _calc;
     IntegerFormat _format;
@@ -22,6 +24,8 @@ class Program {
     bool _exit = false;
 
     ResultFlags _flags = 0;
+
+    readonly ClipboardWindow _clipboardWindow = new();
 
     Program(
         IntegerFormat format,
@@ -67,6 +71,7 @@ class Program {
             """);
     }
 
+    [STAThread]
     static int Main(string[] args) {
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
@@ -232,9 +237,9 @@ class Program {
                     Ctrl+9 = toggle digit grouping           Ctrl+0 = toggle zero pad
                     Ctrl+1 = toggle upper/lowercase hex      Ctrl+2 = print index
 
-                    Commenting:
+                    Editing:
+                    Ctrl+c/v = copy/paste                    " = swap comment of index
                     Append `;` to add a comment              Use `index:comment` to set comment
-                    " = swap comment of index
 
                     Stack:
                     Up/Down = rotate stack                   Delete = edit last
@@ -389,6 +394,21 @@ class Program {
                 break;
             case ConsoleKey.W when key.Modifiers == ConsoleModifiers.Control:
                 ResetInput();
+                break;
+            case ConsoleKey.C when key.Modifiers == ConsoleModifiers.Control:
+                using (var clipboard = new Clipboard(_clipboardWindow.Handle)) {
+                    var entry = _calc.Peek();
+                    var sb = new StringBuilder();
+                    FormatValueRaw(sb, entry.Object, _format, _signed, 0, PaddingMode.None, _upper);
+                    clipboard.SetText(sb.ToString());
+                }
+                break;
+            case ConsoleKey.V when key.Modifiers == ConsoleModifiers.Control:
+                using (var clipboard = new Clipboard(_clipboardWindow.Handle)) {
+                    var text = clipboard.GetText() ?? string.Empty;
+                    _input.Insert(_inputCursor, text);
+                    _inputCursor += text.Length;
+                }
                 break;
             default:
                 return false;
