@@ -7,14 +7,8 @@ using System.Text;
 [SupportedOSPlatform("windows")]
 class Program {
     IRPNCalculator _calc;
-    IntegerFormat _format;
-    bool _signed;
-    InputTypes _type;
-    bool _grouping;
-    PaddingMode _paddingMode;
-    bool _upper;
-    bool _index;
-    bool _fakeNumpad;
+
+    readonly ProgramConfig _config;
 
     readonly StringBuilder _input = new();
     int _inputCursor = 0;
@@ -27,25 +21,10 @@ class Program {
 
     readonly ClipboardWindow _clipboardWindow = new();
 
-    Program(
-        IntegerFormat format,
-        bool signed,
-        InputTypes type,
-        bool grouping,
-        PaddingMode paddingMode,
-        bool upper,
-        bool index,
-        bool fakeNumpad) {
-        _format = format;
-        _signed = signed;
-        _type = type;
-        _grouping = grouping;
-        _paddingMode = paddingMode;
-        _upper = upper;
-        _index = index;
-        _fakeNumpad = fakeNumpad;
+    Program(ProgramConfig config) {
+        _config = config;
 
-        _calc = _type switch {
+        _calc = _config.Type switch {
             InputTypes.Int8 => new RPNCalculator<sbyte>(),
             InputTypes.Int16 => new RPNCalculator<short>(),
             InputTypes.Int32 => new RPNCalculator<int>(),
@@ -76,30 +55,32 @@ class Program {
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
-        IntegerFormat format = IntegerFormat.Decimal;
-        bool signed = false;
-        InputTypes type = InputTypes.Int64;
-        bool grouping = true;
-        PaddingMode paddingMode = PaddingMode.RightJustified;
-        bool upper = true;
-        bool index = true;
-        bool fakeNumpad = false;
+        var config = new ProgramConfig() {
+            Format = IntegerFormat.Decimal,
+            Signed = false,
+            Type = InputTypes.Int64,
+            Grouping = true,
+            PaddingMode = PaddingMode.RightJustified,
+            Upper = true,
+            Index = true,
+            FakeNumpad = false,
+        };
 
         try {
             for (int i = 0; i < args.Length; i++) {
                 var arg = args[i];
 
                 if ("-hex".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    format = IntegerFormat.Hexadecimal;
+                    config.Format = IntegerFormat.Hexadecimal;
                 }
                 else if ("-dec".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    format = IntegerFormat.Decimal;
+                    config.Format = IntegerFormat.Decimal;
                 }
                 else if ("-oct".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    format = IntegerFormat.Octal;
+                    config.Format = IntegerFormat.Octal;
                 }
                 else if ("-bin".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    format = IntegerFormat.Binary;
+                    config.Format = IntegerFormat.Binary;
                 }
 
                 else if ("-type".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
@@ -112,41 +93,41 @@ class Program {
                         "128" => InputTypes.Int128,
                         _ => throw new ArgumentException($"Invalid -type argument {typeName}"),
                     };
-                    signed = char.ToLowerInvariant(typeName[0]) switch {
+                    config.Signed = char.ToLowerInvariant(typeName[0]) switch {
                         's' => true,
                         'u' => false,
                         _ => throw new ArgumentException($"Invalid -type argument {typeName}"),
                     };
-                    type = typeSize;
+                    config.Type = typeSize;
                 }
 
                 else if ("-group".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    grouping = true;
+                    config.Grouping = true;
                 }
                 else if ("-nogroup".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    grouping = false;
+                    config.Grouping = false;
                 }
 
                 else if ("-padding".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    paddingMode = Enum.Parse<PaddingMode>(args[++i], ignoreCase: true);
+                    config.PaddingMode = Enum.Parse<PaddingMode>(args[++i], ignoreCase: true);
                 }
 
                 else if ("-upper".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    upper = true;
+                    config.Upper = true;
                 }
                 else if ("-lower".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    upper = false;
+                    config.Upper = false;
                 }
 
                 else if ("-index".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    index = true;
+                    config.Index = true;
                 }
                 else if ("-noindex".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    index = false;
+                    config.Index = false;
                 }
 
                 else if ("-numpad".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                    fakeNumpad = true;
+                    config.FakeNumpad = true;
                 }
 
                 else if ("-?".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
@@ -165,15 +146,7 @@ class Program {
             return 1;
         }
 
-        var program = new Program(
-            format: format,
-            signed: signed,
-            type: type,
-            grouping: grouping,
-            paddingMode: paddingMode,
-            upper: upper,
-            index: index,
-            fakeNumpad: fakeNumpad);
+        var program = new Program(config);
         program.DoMain();
         return 0;
     }
@@ -272,24 +245,24 @@ class Program {
         refresh = RefreshFlags.Status | RefreshFlags.Stack;
         switch (key.Key) {
             case ConsoleKey.F2 when key.Modifiers == ConsoleModifiers.None:
-                _signed = !_signed;
+                _config.Signed = !_config.Signed;
                 break;
             case ConsoleKey.F3 when key.Modifiers == ConsoleModifiers.None:
             case ConsoleKey.F3 when key.Modifiers == ConsoleModifiers.Shift: {
-                    if (_type == InputTypes.Int16) {
-                        _type = InputTypes.Int8;
+                    if (_config.Type == InputTypes.Int16) {
+                        _config.Type = InputTypes.Int8;
                         _calc = _calc.ConvertTo(typeof(sbyte), false);
                     }
-                    else if (_type == InputTypes.Int32) {
-                        _type = InputTypes.Int16;
+                    else if (_config.Type == InputTypes.Int32) {
+                        _config.Type = InputTypes.Int16;
                         _calc = _calc.ConvertTo(typeof(short), false);
                     }
-                    else if (_type == InputTypes.Int64) {
-                        _type = InputTypes.Int32;
+                    else if (_config.Type == InputTypes.Int64) {
+                        _config.Type = InputTypes.Int32;
                         _calc = _calc.ConvertTo(typeof(int), false);
                     }
-                    else if (_type == InputTypes.Int128) {
-                        _type = InputTypes.Int64;
+                    else if (_config.Type == InputTypes.Int128) {
+                        _config.Type = InputTypes.Int64;
                         _calc = _calc.ConvertTo(typeof(long), false);
                     }
                     break;
@@ -297,42 +270,42 @@ class Program {
             case ConsoleKey.F4 when key.Modifiers == ConsoleModifiers.None:
             case ConsoleKey.F4 when key.Modifiers == ConsoleModifiers.Shift: {
                     var shifted = key.Modifiers.HasFlag(ConsoleModifiers.Shift);
-                    var signed = _signed ^ shifted;
-                    if (_type == InputTypes.Int8) {
-                        _type = InputTypes.Int16;
+                    var signed = _config.Signed ^ shifted;
+                    if (_config.Type == InputTypes.Int8) {
+                        _config.Type = InputTypes.Int16;
                         _calc = _calc.ConvertTo(typeof(short), signed);
                     }
-                    else if (_type == InputTypes.Int16) {
-                        _type = InputTypes.Int32;
+                    else if (_config.Type == InputTypes.Int16) {
+                        _config.Type = InputTypes.Int32;
                         _calc = _calc.ConvertTo(typeof(int), signed);
                     }
-                    else if (_type == InputTypes.Int32) {
-                        _type = InputTypes.Int64;
+                    else if (_config.Type == InputTypes.Int32) {
+                        _config.Type = InputTypes.Int64;
                         _calc = _calc.ConvertTo(typeof(long), signed);
                     }
-                    else if (_type == InputTypes.Int64) {
-                        _type = InputTypes.Int128;
+                    else if (_config.Type == InputTypes.Int64) {
+                        _config.Type = InputTypes.Int128;
                         _calc = _calc.ConvertTo(typeof(Int128), signed);
                     }
                     break;
                 }
             case ConsoleKey.F5 when key.Modifiers == ConsoleModifiers.None:
-                _format = IntegerFormat.Hexadecimal;
+                _config.Format = IntegerFormat.Hexadecimal;
                 break;
             case ConsoleKey.F6 when key.Modifiers == ConsoleModifiers.None:
-                _format = IntegerFormat.Decimal;
+                _config.Format = IntegerFormat.Decimal;
                 break;
             case ConsoleKey.F7 when key.Modifiers == ConsoleModifiers.None:
-                _format = IntegerFormat.Octal;
+                _config.Format = IntegerFormat.Octal;
                 break;
             case ConsoleKey.F8 when key.Modifiers == ConsoleModifiers.None:
-                _format = IntegerFormat.Binary;
+                _config.Format = IntegerFormat.Binary;
                 break;
             case ConsoleKey.D9 when key.Modifiers == ConsoleModifiers.Control:
-                _grouping = !_grouping;
+                _config.Grouping = !_config.Grouping;
                 break;
             case ConsoleKey.D0 when key.Modifiers == ConsoleModifiers.Control:
-                _paddingMode = _paddingMode switch {
+                _config.PaddingMode = _config.PaddingMode switch {
                     PaddingMode.None => PaddingMode.RightJustified,
                     PaddingMode.RightJustified => PaddingMode.ZeroPadded,
                     PaddingMode.ZeroPadded => PaddingMode.None,
@@ -340,10 +313,10 @@ class Program {
                 };
                 break;
             case ConsoleKey.D1 when key.Modifiers == ConsoleModifiers.Control:
-                _upper = !_upper;
+                _config.Upper = !_config.Upper;
                 break;
             case ConsoleKey.D2 when key.Modifiers == ConsoleModifiers.Control:
-                _index = !_index;
+                _config.Index = !_config.Index;
                 break;
             case ConsoleKey.LeftWindows:
             case ConsoleKey.RightWindows:
@@ -403,7 +376,14 @@ class Program {
                 using (var clipboard = new Clipboard(_clipboardWindow.Handle)) {
                     var entry = _calc.Peek();
                     var sb = new StringBuilder();
-                    FormatValueRaw(sb, entry.Object, _format, _signed, 0, PaddingMode.None, _upper);
+                    FormatValueRaw(
+                        sb,
+                        entry.Object,
+                        _config.Format,
+                        _config.Signed,
+                        0,
+                        PaddingMode.None,
+                        _config.Upper);
                     clipboard.SetText(sb.ToString());
                 }
                 break;
@@ -469,7 +449,14 @@ class Program {
                     var entry = _calc.Peek();
                     _calc.DoStackOp(StackOperation.Drop, 1);
                     try {
-                        FormatValueRaw(_input, entry.Object, _format, _signed, 0, PaddingMode.None, _upper);
+                        FormatValueRaw(
+                            _input,
+                            entry.Object,
+                            _config.Format,
+                            _config.Signed,
+                            0,
+                            PaddingMode.None,
+                            _config.Upper);
                         if (entry.Comment != null) {
                             _input.Append(';');
                             _input.Append(entry.Comment);
@@ -564,10 +551,10 @@ class Program {
         var ctrl = key.Modifiers.HasFlag(ConsoleModifiers.Control);
         var shift = key.Modifiers.HasFlag(ConsoleModifiers.Shift);
         var alt = key.Modifiers.HasFlag(ConsoleModifiers.Alt);
-        var co = _signed ?
+        var co = _config.Signed ?
             _flags.HasFlag(ResultFlags.Overflow) :
             _flags.HasFlag(ResultFlags.Carry);
-        var oc = _signed ?
+        var oc = _config.Signed ?
             _flags.HasFlag(ResultFlags.Carry) :
             _flags.HasFlag(ResultFlags.Overflow);
 
@@ -602,7 +589,7 @@ class Program {
             case ConsoleKey.Divide when key.Modifiers == ConsoleModifiers.None:
             case ConsoleKey.Divide when key.Modifiers == ConsoleModifiers.Control:
                 PushInput();
-                if (_signed ^ ctrl)
+                if (_config.Signed ^ ctrl)
                     _flags = _calc.DoBinaryOp(BinaryOperation.SignedDivide, false, _flags);
                 else
                     _flags = _calc.DoBinaryOp(BinaryOperation.UnsignedDivide, false, _flags);
@@ -635,7 +622,7 @@ class Program {
 
             case ConsoleKey.OemPeriod when shift:
                 PushInput();
-                if (_signed ^ ctrl)
+                if (_config.Signed ^ ctrl)
                     _flags = _calc.DoBinaryOp(BinaryOperation.ShiftRightArithmetic, false, _flags);
                 else
                     _flags = _calc.DoBinaryOp(BinaryOperation.ShiftRight, false, _flags);
@@ -734,7 +721,7 @@ class Program {
 
     bool HandleFakeNumpadKeys(ConsoleKeyInfo key, out RefreshFlags refresh) {
         refresh = RefreshFlags.Input;
-        if (!_fakeNumpad || key.Modifiers != ConsoleModifiers.None)
+        if (!_config.FakeNumpad || key.Modifiers != ConsoleModifiers.None)
             return false;
         switch (key.Key) {
             case ConsoleKey.M:
@@ -859,7 +846,7 @@ class Program {
         try {
             var entry = _calc.ParseEntry(
                 original,
-                stack ? IntegerFormat.Decimal : _format,
+                stack ? IntegerFormat.Decimal : _config.Format,
                 out var commentChar);
             if (entry == null)
                 return;
@@ -1028,23 +1015,51 @@ class Program {
 
         Write("Hex:");
         sb.Clear();
-        FormatValueRaw(sb, value, IntegerFormat.Hexadecimal, false, 4, _paddingMode, _upper);
+        FormatValueRaw(
+            sb,
+            value,
+            IntegerFormat.Hexadecimal,
+            false,
+            4,
+            _config.PaddingMode,
+            _config.Upper);
         Write(sb.ToString());
 
         Write("");
         Write("Dec (unsigned):");
         sb.Clear();
-        FormatValueRaw(sb, value, IntegerFormat.Decimal, false, 3, _paddingMode, _upper);
+        FormatValueRaw(
+            sb,
+            value,
+            IntegerFormat.Decimal,
+            false,
+            3,
+            _config.PaddingMode,
+            _config.Upper);
         Write(sb.ToString());
         Write("Dec (signed):");
         sb.Clear();
-        FormatValueRaw(sb, value, IntegerFormat.Decimal, true, 3, _paddingMode, _upper);
+        FormatValueRaw(
+            sb,
+            value,
+            IntegerFormat.Decimal,
+            true,
+            3,
+            _config.PaddingMode,
+            _config.Upper);
         Write(sb.ToString());
 
         Write("");
         Write("Oct:");
         sb.Clear();
-        FormatValueRaw(sb, value, IntegerFormat.Octal, _signed, 3, _paddingMode, _upper);
+        FormatValueRaw(
+            sb,
+            value,
+            IntegerFormat.Octal,
+            _config.Signed,
+            3,
+            _config.PaddingMode,
+            _config.Upper);
         Write(sb.ToString());
 
         Write("");
@@ -1072,23 +1087,23 @@ class Program {
         for (int i = 0; i < stackItems.Count; i++) {
             var entry = stackItems[stackItems.Count - i - 1];
             sb.Clear();
-            var group = _format switch {
+            var group = _config.Format switch {
                 IntegerFormat.Hexadecimal => 4,
                 IntegerFormat.Decimal => 3,
                 IntegerFormat.Octal => 3,
                 IntegerFormat.Binary => 4,
                 _ => throw new InvalidOperationException(),
             };
-            if (!_grouping)
+            if (!_config.Grouping)
                 group = 0;
             FormatValueRaw(
                 sb,
                 entry.Object,
-                format: _format,
-                signed: _signed,
+                format: _config.Format,
+                signed: _config.Signed,
                 group: group,
-                paddingMode: _paddingMode,
-                upper: _upper);
+                paddingMode: _config.PaddingMode,
+                upper: _config.Upper);
             maxLength = Math.Max(maxLength, sb.Length);
             printed.Add(sb.ToString());
         }
@@ -1096,9 +1111,9 @@ class Program {
         for (int i = 0; i < stackItems.Count; i++) {
             var entry = stackItems[stackItems.Count - i - 1];
             var value = printed[i];
-            if (_paddingMode == PaddingMode.RightJustified)
+            if (_config.PaddingMode == PaddingMode.RightJustified)
                 value = value.PadLeft(maxLength);
-            if (_index)
+            if (_config.Index)
                 value = $"{printed.Count - i,4}  {value}";
             if (entry.Comment != null)
                 value = value + " ; " + entry.Comment;
@@ -1145,7 +1160,7 @@ class Program {
 
             if (flags.HasFlag(RefreshFlags.Status)) {
                 Console.SetCursorPosition(0, 0);
-                var mode = _format switch {
+                var mode = _config.Format switch {
                     IntegerFormat.Hexadecimal => "*Hex* F6   F7   F8  ",
                     IntegerFormat.Decimal => " F5  *Dec* F7   F8  ",
                     IntegerFormat.Octal => " F5   F6  *Oct* F8  ",
@@ -1154,17 +1169,17 @@ class Program {
                 };
                 Write(string.Format(
                     "{0}{1,-6} (F2/F3/F4)  {2}  {3,5} {4,5} {5} (Ctrl+9/0/1) {6}{7}",
-                    _signed ? "S" : "U",
-                    _type,
+                    _config.Signed ? "S" : "U",
+                    _config.Type,
                     mode,
-                    _grouping ? "Group" : "Ungrp",
-                    _paddingMode switch {
+                    _config.Grouping ? "Group" : "Ungrp",
+                    _config.PaddingMode switch {
                         PaddingMode.None => "Left",
                         PaddingMode.RightJustified => "Right",
                         PaddingMode.ZeroPadded => "Pad",
                         _ => throw new NotImplementedException(),
                     },
-                    _upper ? "Upper" : "Lower",
+                    _config.Upper ? "Upper" : "Lower",
                     _flags.HasFlag(ResultFlags.Carry) ? "C" : " ",
                     _flags.HasFlag(ResultFlags.Overflow) ? "O" : " "));
             }
