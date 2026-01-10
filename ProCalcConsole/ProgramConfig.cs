@@ -10,5 +10,6 @@ class ProgramConfig {
     public PaddingMode PaddingMode;
     public bool Upper;
     public bool Index;
+    public bool Base;
     public bool FakeNumpad;
 }

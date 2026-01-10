@@ -44,6 +44,7 @@ class Program {
             -padding <padding>      Set padding mode
             -upper/-lower           Set hexadecimal case
             -index/-noindex         Show stack index
+            -base/-nobase           Show base
             -numpad                 Enable fake numpad
             -?                      Show this message
 
@@ -63,6 +64,7 @@ class Program {
             PaddingMode = PaddingMode.RightJustified,
             Upper = true,
             Index = true,
+            Base = false,
             FakeNumpad = false,
         };
 
@@ -124,6 +126,13 @@ class Program {
                 }
                 else if ("-noindex".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                     config.Index = false;
+                }
+
+                else if ("-base".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    config.Base = true;
+                }
+                else if ("-nobase".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    config.Base = false;
                 }
 
                 else if ("-numpad".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
@@ -317,6 +326,9 @@ class Program {
                 break;
             case ConsoleKey.D2 when key.Modifiers == ConsoleModifiers.Control:
                 _config.Index = !_config.Index;
+                break;
+            case ConsoleKey.D3 when key.Modifiers == ConsoleModifiers.Control:
+                _config.Base = !_config.Base;
                 break;
             case ConsoleKey.LeftWindows:
             case ConsoleKey.RightWindows:
@@ -1108,11 +1120,21 @@ class Program {
             printed.Add(sb.ToString());
         }
 
+        var baseString = _config.Format switch {
+            IntegerFormat.Hexadecimal => "0x",
+            IntegerFormat.Decimal => "  ",
+            IntegerFormat.Octal => "0o",
+            IntegerFormat.Binary => "0b",
+            _ => throw new NotImplementedException(),
+        };
         for (int i = 0; i < stackItems.Count; i++) {
             var entry = stackItems[stackItems.Count - i - 1];
             var value = printed[i];
             if (_config.PaddingMode == PaddingMode.RightJustified)
                 value = value.PadLeft(maxLength);
+            if (_config.Base) {
+                value = baseString + value;
+            }
             if (_config.Index)
                 value = $"{printed.Count - i,4}  {value}";
             if (entry.Comment != null)
@@ -1161,14 +1183,14 @@ class Program {
             if (flags.HasFlag(RefreshFlags.Status)) {
                 Console.SetCursorPosition(0, 0);
                 var mode = _config.Format switch {
-                    IntegerFormat.Hexadecimal => "*Hex* F6   F7   F8  ",
-                    IntegerFormat.Decimal => " F5  *Dec* F7   F8  ",
-                    IntegerFormat.Octal => " F5   F6  *Oct* F8  ",
-                    IntegerFormat.Binary => " F5   F6   F7  *Bin*",
-                    _ => throw new Exception("Unexpected format"),
+                    IntegerFormat.Hexadecimal => "Hex",
+                    IntegerFormat.Decimal => "Dec",
+                    IntegerFormat.Octal => "Bin",
+                    IntegerFormat.Binary => "Oct",
+                    _ => throw new NotImplementedException(),
                 };
                 Write(string.Format(
-                    "{0}{1,-6} (F2/F3/F4)  {2}  {3,5} {4,5} {5} (Ctrl+9/0/1) {6}{7}",
+                    "{0}{1,-6} (F234)  {2} (F5678)  {3,5} {4,5} {5} {6} {7,5} (^90123) {8}{9}",
                     _config.Signed ? "S" : "U",
                     _config.Type,
                     mode,
@@ -1180,6 +1202,8 @@ class Program {
                         _ => throw new NotImplementedException(),
                     },
                     _config.Upper ? "Upper" : "Lower",
+                    _config.Index ? "Index" : "NoIdx",
+                    _config.Base ? "Base" : "NoBas",
                     _flags.HasFlag(ResultFlags.Carry) ? "C" : " ",
                     _flags.HasFlag(ResultFlags.Overflow) ? "O" : " "));
             }
