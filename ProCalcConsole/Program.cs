@@ -1,6 +1,7 @@
 using ProCalcConsole;
 using ProCalcCore;
 using System.Globalization;
+using System.Runtime.Versioning;
 using System.Text;
 
 class Program {
@@ -18,6 +19,8 @@ class Program {
     ResultFlags _flags = 0;
 
     readonly ClipboardManager _clipboard = new();
+    [SupportedOSPlatformGuard("windows")]
+    readonly bool isWindows = OperatingSystem.IsWindows();
 
     Program(ProgramConfig config) {
         _config = config;
@@ -51,31 +54,65 @@ class Program {
         }
 
         var program = new Program(config);
-        program.DoMain();
-        return 0;
+        return program.DoMain();
     }
 
-    void DoMain() {
-        Console.TreatControlCAsInput = true;
-        Console.Clear();
-        _calc.Push(0, null, null);
-        Refresh(RefreshFlags.Screen);
-        while (!_exit) {
-            var key = Console.ReadKey(true);
+    object ReadConsoleInput() {
+        if (isWindows)
+            return ConsoleEx.ReadConsoleInput();
+        else
+            return Console.ReadKey(true);
+    }
+
+    int DoMain() {
+        uint oldIm = 0, oldOm = 0;
+        if (isWindows) {
             try {
-                if (HandleHelpKeys(key, out RefreshFlags refresh) ||
-                    HandleModeKeys(key, out refresh) ||
-                    HandleEditKeys(key, out refresh) ||
-                    HandleCommentKeys(key, out refresh) ||
-                    HandleStackKeys(key, out refresh) ||
-                    HandleBinaryOrCarryOperators(key, out refresh) ||
-                    HandleOperators(key, out refresh) ||
-                    HandleFakeNumpadKeys(key, out refresh) ||
-                    HandleInputKeys(key, out refresh) ||
-                    HandleInputKeys2(key, out refresh)) {
-                    Refresh(refresh);
-                    continue;
+                (oldIm, oldOm) = ConsoleEx.EnableTuiMode();
+            }
+            catch {
+                Console.WriteLine("Not a terminal");
+                return 1;
+            }
+        }
+        try {
+            _calc.Push(0, null, null);
+            Refresh(RefreshFlags.Screen);
+            while (!_exit) {
+                var cin = ReadConsoleInput();
+                switch (cin) {
+                    case ConsoleKeyInfo key:
+                        HandleKey(key);
+                        break;
+                    case ConsoleResizeInfo:
+                        Refresh(RefreshFlags.Screen | RefreshFlags.Clear, null);
+                        break;
                 }
+            }
+
+            return 0;
+        }
+        finally {
+            if (isWindows)
+                ConsoleEx.RestoreMode(oldIm, oldOm);
+        }
+    }
+
+    void HandleKey(ConsoleKeyInfo key) {
+        try {
+            if (HandleHelpKeys(key, out RefreshFlags refresh) ||
+                HandleModeKeys(key, out refresh) ||
+                HandleEditKeys(key, out refresh) ||
+                HandleCommentKeys(key, out refresh) ||
+                HandleStackKeys(key, out refresh) ||
+                HandleBinaryOrCarryOperators(key, out refresh) ||
+                HandleOperators(key, out refresh) ||
+                HandleFakeNumpadKeys(key, out refresh) ||
+                HandleInputKeys(key, out refresh) ||
+                HandleInputKeys2(key, out refresh)) {
+                Refresh(refresh);
+            }
+            else {
                 throw new NotSupportedException(string.Format(
                     "Unknown key: {0}{1}{2}{3}",
                     key.Modifiers.HasFlag(ConsoleModifiers.Control) ? "Ctrl+" : "",
@@ -83,17 +120,18 @@ class Program {
                     key.Modifiers.HasFlag(ConsoleModifiers.Shift) ? "Shift+" : "",
                     key.Key.ToString()));
             }
-            catch (Exception ex) {
-                Refresh(RefreshFlags.Screen, ex);
-                continue;
-            }
+        }
+        catch (Exception ex) {
+            Refresh(RefreshFlags.Screen, ex);
         }
     }
 
     void Pause() {
         Console.SetCursorPosition(0, Console.WindowHeight - 1);
         Console.Write("Press any key...");
-        Console.ReadKey(true);
+        while (true)
+            if (ReadConsoleInput() is ConsoleKeyInfo)
+                break;
     }
 
     void ResetInput() {
@@ -246,7 +284,7 @@ class Program {
                 _exit = true;
                 break;
             case ConsoleKey.L when key.Modifiers == ConsoleModifiers.Control:
-                refresh = RefreshFlags.Screen;
+                refresh = RefreshFlags.Screen | RefreshFlags.Clear;
                 break;
             case ConsoleKey.Backspace when key.Modifiers == ConsoleModifiers.None:
                 if (_inputCursor > 0)
@@ -986,7 +1024,7 @@ class Program {
         var printable = Console.WindowHeight - 2;
         if (printable < calc.Count) {
             printable--;
-            Write(string.Format("...{0}", calc.Count - printable));
+            Write($"...{calc.Count - printable}");
         }
 
         var stackItems = calc.GetStackItems(Math.Min(printable, calc.Count)).ToList();
@@ -1042,7 +1080,7 @@ class Program {
     }
 
     void PrintInputLine() {
-        var inputLineWidth = Console.WindowWidth - 1;
+        var inputLineWidth = Console.WindowWidth;
         var input = _input.ToString();
         int markerLeft, usableWidth, cursorCol;
 
@@ -1074,9 +1112,21 @@ class Program {
     }
 
     void Refresh(RefreshFlags flags, Exception? ex = null) {
+        int width = Console.WindowWidth, height = Console.WindowHeight;
         var inputCol = Console.CursorLeft;
         try {
             Console.CursorVisible = false;
+
+            if (width < 79 || height < 4) {
+                Console.SetCursorPosition(0, 0);
+                Console.Clear();
+                Console.Write($"Window too small ({width}x{height})");
+                return;
+            }
+
+            if (flags.HasFlag(RefreshFlags.Clear)) {
+                Console.Clear();
+            }
 
             if (flags.HasFlag(RefreshFlags.Status)) {
                 Console.SetCursorPosition(0, 0);
@@ -1115,15 +1165,15 @@ class Program {
                 Console.SetCursorPosition(0, 1);
                 PrintStack(_calc);
 
-                while (Console.CursorTop < Console.WindowHeight - 2)
+                while (Console.CursorTop < height - 1)
                     Write("");
             }
 
             if (flags.HasFlag(RefreshFlags.Input)) {
-                Console.SetCursorPosition(0, Console.WindowHeight - 1);
+                Console.SetCursorPosition(0, height - 1);
                 if (ex != null) {
                     _ilm = InputLineMode.Exception;
-                    Write(ex.Message, width: Console.WindowWidth - 1);
+                    Write(ex.Message, width: width - 1);
                     Console.Beep();
                 }
                 else {
@@ -1132,7 +1182,7 @@ class Program {
                 }
             }
             else {
-                Console.SetCursorPosition(inputCol, Console.WindowHeight - 1);
+                Console.SetCursorPosition(inputCol, height - 1);
             }
         }
         finally {

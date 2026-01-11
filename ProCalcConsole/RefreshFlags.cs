@@ -6,5 +6,6 @@ enum RefreshFlags : uint {
     Status = 1,
     Stack = 2,
     Input = 4,
-    Screen = uint.MaxValue,
+    Clear = 0x80000000,
+    Screen = 0x7fffffff,
 }
