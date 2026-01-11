@@ -57,6 +57,7 @@ class Program {
 
     void DoMain() {
         Console.TreatControlCAsInput = true;
+        Console.Clear();
         _calc.Push(0, null, null);
         Refresh(RefreshFlags.Screen);
         while (!_exit) {
@@ -1114,7 +1115,7 @@ class Program {
                 Console.SetCursorPosition(0, 1);
                 PrintStack(_calc);
 
-                while (Console.CursorTop < Console.WindowHeight - 1)
+                while (Console.CursorTop < Console.WindowHeight - 2)
                     Write("");
             }
 
