@@ -216,27 +216,27 @@ class Program {
                 Console.WriteLine("""
                     Mode:
                     F5-F8 = hex/dec/oct/bin                  F2 = toggle signed/unsigned
-                    F3/F4 = truncate/extend (Ctrl = invert S/U)
+                    F3/F4 = truncate/extend (Ctrl inverts S/U)
                     Ctrl+9 = toggle digit grouping           Ctrl+0 = toggle zero pad
                     Ctrl+1 = toggle upper/lowercase hex      Ctrl+2 = print index
+                    Ctrl+3 = toggle base display on stack
 
                     Editing:
                     Ctrl+c/v = copy/paste                    " = swap comment of index
                     Append `;` to add a comment              Use `index:comment` to set comment
 
                     Stack:
-                    Up/Down = rotate stack                   Delete = edit last
-                    Shift+Delete = delete last               Ctrl+Delete = clear all
+                    Up/Down = rotate stack                   Del/Shift+Del= edit/delete last
+                    Ctrl+Del = clear all                     p = display top
                     z/s = extract/swap                       Shift+Enter = pick
-                    p = display top
 
                     Carry operators (add Alt to use carry):
                     `+_` = add/subtract                      `{}` = rotate left/right
-                    `<>` = shift (Ctrl = invert S/U)
-                    r = push CF/OF (Shift = invert S/U)      Ctrl+r = clear flags
+                    `<>` = shift (Ctrl inverts S/U)
+                    r = push CF/OF (Shift inverts S/U)       Ctrl+r = clear flags
 
                     Other operators:
-                    `*%` = mul/rem                           `/` = div (Ctrl = invert S/U)
+                    `*%` = mul/rem                           `/` = div (Ctrl inverts S/U)
                     `&|^~` = bitwise logic                   Shift+4 = popcount
                     Shift+9/0 = mask left/right              Ctrl+Shift+9/0 = count lead/trail 0s
                     Shift+2 = pow2                           Shift+3/Ctrl+Shift+3 = align up/down
@@ -349,8 +349,7 @@ class Program {
                 refresh = RefreshFlags.Stack | RefreshFlags.Input;
                 break;
             case ConsoleKey.D when key.Modifiers == ConsoleModifiers.Control:
-                if (_input.Length == 0)
-                    _exit = true;
+                _exit = true;
                 break;
             case ConsoleKey.L when key.Modifiers == ConsoleModifiers.Control:
                 refresh = RefreshFlags.Screen;
