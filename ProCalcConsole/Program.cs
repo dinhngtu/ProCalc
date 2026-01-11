@@ -1185,8 +1185,8 @@ class Program {
                 var mode = _config.Format switch {
                     IntegerFormat.Hexadecimal => "Hex",
                     IntegerFormat.Decimal => "Dec",
-                    IntegerFormat.Octal => "Bin",
-                    IntegerFormat.Binary => "Oct",
+                    IntegerFormat.Octal => "Oct",
+                    IntegerFormat.Binary => "Bin",
                     _ => throw new NotImplementedException(),
                 };
                 string statusFormat;
