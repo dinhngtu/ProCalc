@@ -25,16 +25,16 @@ public static class IntConverter {
 
     public static T ToCalculatorTypeTruncating<T>(object value) where T : INumberBase<T> {
         return value switch {
-            Int128 s => T.CreateTruncating(s),
-            long s => T.CreateTruncating(s),
-            int s => T.CreateTruncating(s),
-            short s => T.CreateTruncating(s),
-            sbyte s => T.CreateTruncating(s),
-            UInt128 u => T.CreateTruncating(u),
-            ulong u => T.CreateTruncating(u),
-            uint u => T.CreateTruncating(u),
-            ushort u => T.CreateTruncating(u),
-            byte u => T.CreateTruncating(u),
+            Int128 x => T.CreateTruncating(x),
+            long x => T.CreateTruncating(x),
+            int x => T.CreateTruncating(x),
+            short x => T.CreateTruncating(x),
+            sbyte x => T.CreateTruncating(x),
+            UInt128 x => T.CreateTruncating(x),
+            ulong x => T.CreateTruncating(x),
+            uint x => T.CreateTruncating(x),
+            ushort x => T.CreateTruncating(x),
+            byte x => T.CreateTruncating(x),
             _ => throw new InvalidCastException(),
         };
     }

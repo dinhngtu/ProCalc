@@ -35,11 +35,7 @@ public class RPNCalculator<T> : IRPNCalculator
     }
 
     public void Push(IStackEntry value) {
-        _stack.PushFront(new StackEntry<T>() {
-            Value = IntConverter.ToCalculatorTypeTruncating<T>(value.Object),
-            Comment = value.Comment,
-            AltComment = value.AltComment,
-        });
+        Push(value.Object, value.Comment, value.AltComment);
     }
 
     public IStackEntry Peek() {
@@ -505,6 +501,7 @@ public class RPNCalculator<T> : IRPNCalculator
             if (explicitFormat)
                 scratch.Remove(0, 2);
         }
+
         if (!explicitFormat) {
             explicitFormat = true;
             switch (char.ToLowerInvariant(scratch[^1])) {
@@ -529,6 +526,7 @@ public class RPNCalculator<T> : IRPNCalculator
             if (explicitFormat)
                 scratch.Remove(scratch.Length - 1, 1);
         }
+
         var raw = realFormat switch {
             IntegerFormat.Hexadecimal => UInt128.Parse(scratch.ToString(), NumberStyles.AllowHexSpecifier, null),
             IntegerFormat.Decimal => UInt128.Parse(scratch.ToString(), NumberStyles.None, null),
