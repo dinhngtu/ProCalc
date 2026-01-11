@@ -103,4 +103,25 @@ public class TestIntConverter {
         // UInt128 -> Int128
         Assert.Equal((Int128)100, IntConverter.ToCalculatorTypeTruncating<Int128>((UInt128)100));
     }
+
+    [Fact]
+    public void TestTruncation() {
+        var _ = IntConverter.ToCalculatorType<short, UInt128>(32767, out bool truncated);
+        Assert.False(truncated);
+
+        _ = IntConverter.ToCalculatorType<short, UInt128>(32768, out truncated);
+        Assert.False(truncated);
+
+        _ = IntConverter.ToCalculatorType<short, UInt128>(65535, out truncated);
+        Assert.False(truncated);
+
+        _ = IntConverter.ToCalculatorType<short, UInt128>(65536, out truncated);
+        Assert.True(truncated);
+
+        _ = IntConverter.ToCalculatorType<short, UInt128>(UInt128.CreateTruncating(-32768), out truncated);
+        Assert.False(truncated);
+
+        _ = IntConverter.ToCalculatorType<short, UInt128>(UInt128.CreateTruncating(-32769), out truncated);
+        Assert.True(truncated);
+    }
 }

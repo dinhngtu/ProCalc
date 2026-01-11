@@ -14,6 +14,15 @@ public static class IntConverter {
         };
     }
 
+    public static T ToCalculatorType<T, U>(U value, out bool truncated)
+        where T : INumberBase<T>, IMinMaxValue<T>, ISignedNumber<T>
+        where U : INumberBase<U> {
+        var full = UInt128.CreateTruncating(value);
+        var limit = UInt128.CreateTruncating(T.MaxValue);
+        truncated = (full > (limit * 2 + 1)) && (full < (UInt128.MaxValue - limit));
+        return T.CreateTruncating(value);
+    }
+
     public static T ToCalculatorTypeTruncating<T>(object value) where T : INumberBase<T> {
         return value switch {
             Int128 s => T.CreateTruncating(s),

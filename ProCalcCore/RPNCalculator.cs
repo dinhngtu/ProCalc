@@ -5,7 +5,7 @@ using System.Text;
 namespace ProCalcCore;
 
 public class RPNCalculator<T> : IRPNCalculator
-    where T : struct, IBinaryInteger<T>, IMinMaxValue<T> {
+    where T : struct, IBinaryInteger<T>, IMinMaxValue<T>, ISignedNumber<T> {
     public const int DefaultCapacity = 256;
 
     readonly Deque<StackEntry<T>> _stack;
@@ -409,7 +409,7 @@ public class RPNCalculator<T> : IRPNCalculator
     }
 
     public RPNCalculator<U> Into<U>(bool signExtend = false)
-        where U : struct, IBinaryInteger<U>, IMinMaxValue<U> {
+        where U : struct, IBinaryInteger<U>, IMinMaxValue<U>, ISignedNumber<U> {
         if (signExtend)
             return new RPNCalculator<U>(_stack.Select(x => new StackEntry<U>() {
                 Value = U.CreateTruncating(x.Value),
@@ -536,18 +536,16 @@ public class RPNCalculator<T> : IRPNCalculator
             IntegerFormat.Binary => UInt128.Parse(scratch.ToString(), NumberStyles.AllowBinarySpecifier, null),
             _ => throw new NotImplementedException(),
         };
-        if (negative) {
-            return new StackEntry<T>() {
-                Value = T.CreateTruncating(-raw),
-                Comment = comment,
-            };
-        }
-        else {
-            return new StackEntry<T>() {
-                Value = T.CreateTruncating(raw),
-                Comment = comment,
-            };
-        }
+        if (negative)
+            raw = -raw;
+
+        var value = IntConverter.ToCalculatorType<T, UInt128>(raw, out var truncated);
+        if (truncated)
+            throw new OverflowException();
+        return new StackEntry<T>() {
+            Value = value,
+            Comment = comment,
+        };
     }
 
     public IStackEntry? ParseEntry(ReadOnlySpan<char> input, IntegerFormat format, out char commentChar) {
