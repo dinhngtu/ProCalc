@@ -12,4 +12,5 @@ class ProgramConfig {
     public bool Index;
     public bool Base;
     public bool FakeNumpad;
+    public bool ShowHints;
 }

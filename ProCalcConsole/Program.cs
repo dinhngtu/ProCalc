@@ -66,6 +66,7 @@ class Program {
             Index = true,
             Base = false,
             FakeNumpad = false,
+            ShowHints = false,
         };
 
         try {
@@ -1189,8 +1190,13 @@ class Program {
                     IntegerFormat.Binary => "Oct",
                     _ => throw new NotImplementedException(),
                 };
+                string statusFormat;
+                if (_config.ShowHints)
+                    statusFormat = "{0}{1,-6} (F234)  {2} (F5678)  {3,5} {4,5} {5} {6} {7,5} (^90123)  {8}{9}";
+                else
+                    statusFormat = "{0}{1,-6}    {2}    {3,5} {4,5} {5} {6} {7,5}    {8}{9}";
                 Write(string.Format(
-                    "{0}{1,-6} (F234)  {2} (F5678)  {3,5} {4,5} {5} {6} {7,5} (^90123) {8}{9}",
+                    statusFormat,
                     _config.Signed ? "S" : "U",
                     _config.Type,
                     mode,
