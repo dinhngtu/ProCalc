@@ -45,7 +45,8 @@ class Program {
             -upper/-lower           Set hexadecimal case
             -index/-noindex         Show stack index
             -base/-nobase           Show base
-            -numpad                 Enable fake numpad
+            -numpad/-nonumpad       Enable fake numpad
+            -hints/-nohints         Show status hints
             -?                      Show this message
 
             """);
@@ -138,6 +139,16 @@ class Program {
 
                 else if ("-numpad".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                     config.FakeNumpad = true;
+                }
+                else if ("-nonumpad".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    config.FakeNumpad = false;
+                }
+
+                else if ("-hints".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    config.ShowHints = true;
+                }
+                else if ("-nohints".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                    config.ShowHints = false;
                 }
 
                 else if ("-?".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
