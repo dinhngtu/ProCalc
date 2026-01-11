@@ -1,10 +1,8 @@
 using ProCalcConsole;
 using ProCalcCore;
 using System.Globalization;
-using System.Runtime.Versioning;
 using System.Text;
 
-[SupportedOSPlatform("windows")]
 class Program {
     IRPNCalculator _calc;
 
@@ -19,7 +17,7 @@ class Program {
 
     ResultFlags _flags = 0;
 
-    readonly ClipboardWindow _clipboardWindow = new();
+    readonly ClipboardManager _clipboard = new();
 
     Program(ProgramConfig config) {
         _config = config;
@@ -137,7 +135,6 @@ class Program {
                     Shift+9/0 = mask left/right              Ctrl+Shift+9/0 = count lead/trail 0s
                     Shift+2 = pow2                           Shift+3/Ctrl+Shift+3 = align up/down
                     Alt+Shift+` = byteswap
-
                     """);
                 Pause();
                 break;
@@ -281,7 +278,9 @@ class Program {
                 ResetInput();
                 break;
             case ConsoleKey.C when key.Modifiers == ConsoleModifiers.Control:
-                using (var clipboard = new Clipboard(_clipboardWindow.Handle)) {
+                using (var clipboard = _clipboard.Open()) {
+                    if (clipboard == null)
+                        break;
                     var entry = _calc.Peek();
                     var sb = new StringBuilder();
                     FormatValueRaw(
@@ -296,7 +295,9 @@ class Program {
                 }
                 break;
             case ConsoleKey.V when key.Modifiers == ConsoleModifiers.Control:
-                using (var clipboard = new Clipboard(_clipboardWindow.Handle)) {
+                using (var clipboard = _clipboard.Open()) {
+                    if (clipboard == null)
+                        break;
                     var text = clipboard.GetText() ?? string.Empty;
                     _input.Insert(_inputCursor, text);
                     _inputCursor += text.Length;
