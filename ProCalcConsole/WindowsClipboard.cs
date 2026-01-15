@@ -81,16 +81,14 @@ class WindowsClipboard : IClipboard {
                     Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
                 }
 
-                unsafe {
-                    fixed (char* raw = value) {
-                        Buffer.MemoryCopy(
-                            raw,
-                            ptr,
-                            bufSize,
-                            value.Length * sizeof(char));
-                    }
-                    ((char*)ptr)[value.Length] = '\0';
+                fixed (char* raw = value) {
+                    Buffer.MemoryCopy(
+                        raw,
+                        ptr,
+                        bufSize,
+                        value.Length * sizeof(char));
                 }
+                ((char*)ptr)[value.Length] = '\0';
 
                 if (PInvoke.SetClipboardData(
                     (uint)CLIPBOARD_FORMAT.CF_UNICODETEXT,

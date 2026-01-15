@@ -1,9 +1,10 @@
+using System.Buffers.Binary;
 using System.Numerics;
 
 namespace ProCalcCore;
 
-public static class IntConverter {
-    public static UInt128 ToUInt128(object value) {
+public static class CalculatorMath {
+    public static UInt128 ToUInt128Unsigned(object value) {
         return value switch {
             Int128 val128 => UInt128.CreateTruncating(val128),
             long val64 => UInt128.CreateTruncating(ulong.CreateTruncating(val64)),
@@ -15,7 +16,7 @@ public static class IntConverter {
     }
 
     public static T ToCalculatorType<T, U>(U value, out bool truncated)
-        where T : INumberBase<T>, IMinMaxValue<T>, ISignedNumber<T>
+        where T : ISignedNumber<T>, IMinMaxValue<T>
         where U : INumberBase<U> {
         var full = UInt128.CreateTruncating(value);
         var limit = UInt128.CreateTruncating(T.MaxValue);
@@ -53,29 +54,19 @@ public static class IntConverter {
     }
 
     public static bool UnsignedLess<T>(T a, T b) where T : INumberBase<T> {
-        if (typeof(T) == typeof(Int128)) {
-            return UInt128.CreateTruncating(a) < UInt128.CreateTruncating(b);
-        }
-        else if (typeof(T) == typeof(long)) {
-            return ulong.CreateTruncating(a) < ulong.CreateTruncating(b);
-        }
-        else if (typeof(T) == typeof(int)) {
-            return uint.CreateTruncating(a) < uint.CreateTruncating(b);
-        }
-        else if (typeof(T) == typeof(short)) {
-            return ushort.CreateTruncating(a) < ushort.CreateTruncating(b);
-        }
-        else if (typeof(T) == typeof(sbyte)) {
-            return byte.CreateTruncating(a) < byte.CreateTruncating(b);
-        }
-        else {
-            throw new InvalidCastException();
-        }
+        return a switch {
+            Int128 => UInt128.CreateTruncating(a) < UInt128.CreateTruncating(b),
+            long => ulong.CreateTruncating(a) < ulong.CreateTruncating(b),
+            int => uint.CreateTruncating(a) < uint.CreateTruncating(b),
+            short => ushort.CreateTruncating(a) < ushort.CreateTruncating(b),
+            sbyte => byte.CreateTruncating(a) < byte.CreateTruncating(b),
+            _ => throw new InvalidCastException(),
+        };
     }
 
     public static bool UnsignedMultiplyOverflows<T>(T a, T b) where T : INumberBase<T> {
-        var la = ToUInt128(a);
-        var lb = ToUInt128(b);
+        var la = ToUInt128Unsigned(a);
+        var lb = ToUInt128Unsigned(b);
         UInt128 result;
         try {
             result = checked(la * lb);
@@ -83,29 +74,30 @@ public static class IntConverter {
         catch (OverflowException) {
             return true;
         }
-        if (typeof(T) == typeof(Int128)) {
-            return false;
-        }
-        else if (typeof(T) == typeof(long)) {
-            return result > UInt128.CreateTruncating(ulong.MaxValue);
-        }
-        else if (typeof(T) == typeof(int)) {
-            return result > UInt128.CreateTruncating(uint.MaxValue);
-        }
-        else if (typeof(T) == typeof(short)) {
-            return result > UInt128.CreateTruncating(ushort.MaxValue);
-        }
-        else if (typeof(T) == typeof(sbyte)) {
-            return result > UInt128.CreateTruncating(byte.MaxValue);
-        }
-        else {
-            throw new InvalidCastException();
-        }
+        return a switch {
+            Int128 => false,
+            long => result > UInt128.CreateTruncating(ulong.MaxValue),
+            int => result > UInt128.CreateTruncating(uint.MaxValue),
+            short => result > UInt128.CreateTruncating(ushort.MaxValue),
+            sbyte => result > UInt128.CreateTruncating(byte.MaxValue),
+            _ => throw new InvalidCastException(),
+        };
     }
 
     public static T UnsignedDivide<T>(T a, T b) where T : INumberBase<T> {
-        var la = ToUInt128(a);
-        var lb = ToUInt128(b);
+        var la = ToUInt128Unsigned(a);
+        var lb = ToUInt128Unsigned(b);
         return T.CreateTruncating(la / lb);
+    }
+
+    public static T ByteSwap<T>(T x) where T : INumberBase<T> {
+        return x switch {
+            Int128 v => T.CreateTruncating(BinaryPrimitives.ReverseEndianness(v)),
+            long v => T.CreateTruncating(BinaryPrimitives.ReverseEndianness(v)),
+            int v => T.CreateTruncating(BinaryPrimitives.ReverseEndianness(v)),
+            short v => T.CreateTruncating(BinaryPrimitives.ReverseEndianness(v)),
+            sbyte v => T.CreateTruncating(BinaryPrimitives.ReverseEndianness(v)),
+            _ => throw new InvalidCastException(),
+        };
     }
 }

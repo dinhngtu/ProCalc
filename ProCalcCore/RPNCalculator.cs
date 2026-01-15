@@ -28,7 +28,7 @@ public class RPNCalculator<T> : IRPNCalculator
 
     public void Push(object value, string? comment, string? altComment) {
         _stack.PushFront(new StackEntry<T>() {
-            Value = IntConverter.ToCalculatorTypeTruncating<T>(value),
+            Value = CalculatorMath.ToCalculatorTypeTruncating<T>(value),
             Comment = comment,
             AltComment = altComment,
         });
@@ -90,7 +90,7 @@ public class RPNCalculator<T> : IRPNCalculator
                     if (op == BinaryOperation.Add)
                         carryIn = false;
                     result = a.Value + b.Value + (carryIn ? T.One : T.Zero);
-                    if (IntConverter.UnsignedLess(result, a.Value) || (carryIn && result == a.Value))
+                    if (CalculatorMath.UnsignedLess(result, a.Value) || (carryIn && result == a.Value))
                         flags = ResultFlags.Carry;
                     if (((result ^ a.Value) & (result ^ b.Value)) < T.Zero)
                         flags |= ResultFlags.Overflow;
@@ -101,14 +101,14 @@ public class RPNCalculator<T> : IRPNCalculator
                     if (op == BinaryOperation.Subtract)
                         carryIn = false;
                     result = a.Value - b.Value - (carryIn ? T.One : T.Zero);
-                    if (IntConverter.UnsignedLess(a.Value, result) || (carryIn && result == a.Value))
+                    if (CalculatorMath.UnsignedLess(a.Value, result) || (carryIn && result == a.Value))
                         flags = ResultFlags.Carry;
                     if (((a.Value ^ b.Value) & (result ^ a.Value)) < T.Zero)
                         flags |= ResultFlags.Overflow;
                     break;
 
                 case BinaryOperation.Multiply:
-                    if (IntConverter.UnsignedMultiplyOverflows(a.Value, b.Value))
+                    if (CalculatorMath.UnsignedMultiplyOverflows(a.Value, b.Value))
                         flags = ResultFlags.Carry;
                     try {
                         result = checked(a.Value * b.Value);
@@ -120,7 +120,7 @@ public class RPNCalculator<T> : IRPNCalculator
                     break;
 
                 case BinaryOperation.UnsignedDivide:
-                    result = IntConverter.UnsignedDivide(a.Value, b.Value);
+                    result = CalculatorMath.UnsignedDivide(a.Value, b.Value);
                     break;
 
                 case BinaryOperation.SignedDivide:
@@ -253,12 +253,6 @@ public class RPNCalculator<T> : IRPNCalculator
         return (T.One << val) - T.One;
     }
 
-    T ByteSwap(T val) {
-        var tmp = new byte[WordBytes];
-        val.WriteBigEndian(tmp);
-        return T.ReadLittleEndian(tmp, false);
-    }
-
     public void DoUnaryOp(UnaryOperation op) {
         if (_stack.Count < 1)
             throw new InvalidOperationException("Not enough operands");
@@ -275,7 +269,7 @@ public class RPNCalculator<T> : IRPNCalculator
                 UnaryOperation.CountLeadingZeroes => T.LeadingZeroCount(val.Value),
                 UnaryOperation.CountTrailingZeroes => T.TrailingZeroCount(val.Value),
                 UnaryOperation.Pow2 => T.One << int.CreateChecked(val.Value),
-                UnaryOperation.ByteSwap => ByteSwap(val.Value),
+                UnaryOperation.ByteSwap => CalculatorMath.ByteSwap(val.Value),
                 _ => throw new NotSupportedException(nameof(op)),
             };
         }
@@ -414,7 +408,7 @@ public class RPNCalculator<T> : IRPNCalculator
             }), _stack.Capacity);
         else
             return new RPNCalculator<U>(_stack.Select(x => new StackEntry<U>() {
-                Value = IntConverter.ToCalculatorTypeUnsigned<T, U>(x.Value),
+                Value = CalculatorMath.ToCalculatorTypeUnsigned<T, U>(x.Value),
                 Comment = x.Comment,
                 AltComment = x.AltComment,
             }), _stack.Capacity);
@@ -537,7 +531,7 @@ public class RPNCalculator<T> : IRPNCalculator
         if (negative)
             raw = -raw;
 
-        var value = IntConverter.ToCalculatorType<T, UInt128>(raw, out var truncated);
+        var value = CalculatorMath.ToCalculatorType<T, UInt128>(raw, out var truncated);
         if (truncated)
             throw new OverflowException();
         return new StackEntry<T>() {

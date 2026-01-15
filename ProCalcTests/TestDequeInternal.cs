@@ -1,22 +1,17 @@
 using ProCalcCore;
-using System.Reflection;
 
 namespace ProCalcTests;
 
 public class TestDequeInternal {
 
     static void SetState<T>(Deque<T> deque, int head, int tail) where T : struct {
-        var type = typeof(Deque<T>);
-        type.GetField("_head", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(deque, head);
-        type.GetField("_tail", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(deque, tail);
+        deque._head = head;
+        deque._tail = tail;
     }
 
     static void FillIndices(Deque<int> deque) {
-        var type = typeof(Deque<int>);
-        var field = type.GetField("_data", BindingFlags.NonPublic | BindingFlags.Instance);
-        var list = (List<int>)field!.GetValue(deque)!;
-        for (int i = 0; i < list.Count; i++) {
-            list[i] = i;
+        for (int i = 0; i < deque._data.Length; i++) {
+            deque._data[i] = i;
         }
     }
 

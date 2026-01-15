@@ -2,24 +2,17 @@ using System.Collections;
 
 namespace ProCalcCore;
 
-public class Deque<T> : IEnumerable<T> where T : struct {
-    readonly List<T> _data;
-    int _head = 0, _tail = 0;
+public class Deque<T>(int capacity) : IEnumerable<T> {
+    internal readonly T[] _data = new T[capacity];
+    internal int _head = 0, _tail = 0;
 
     internal static int CircularDistance(int from, int to, int size) {
         return (from <= to) ? (to - from) : (size - (from - to));
     }
 
-    public Deque(int capacity) {
-        _data = new List<T>(capacity);
-        for (int i = 0; i < capacity; i++) {
-            _data.Add(default);
-        }
-    }
-
     public int Capacity {
         get {
-            return _data.Count;
+            return _data.Length;
         }
     }
 
@@ -130,7 +123,7 @@ public class Deque<T> : IEnumerable<T> where T : struct {
                 yield return _data[pos];
             }
         }
-        else if (amount <= _data.Count - _tail) {
+        else if (amount <= Capacity - _tail) {
             for (int pos = _tail; pos < _tail + amount; pos++) {
                 yield return _data[pos];
             }

@@ -155,11 +155,12 @@ class Program {
                     Ctrl+3 = toggle base display on stack
 
                     Editing:
+                    h/x/n/o/t/b/y = base prefixes/suffixes
                     Ctrl+c/v = copy/paste                    " = swap comment of index
                     Append `;` to add a comment              Use `index:comment` to set comment
 
                     Stack:
-                    Up/Down = rotate stack                   Del/Shift+Del= edit/delete last
+                    Up/Down = rotate stack                   Del/Shift+Del = edit/delete last
                     Ctrl+Del = clear all                     p = display top
                     z/s = extract/swap                       Shift+Enter = pick
 
@@ -854,7 +855,7 @@ class Program {
         PaddingMode paddingMode) {
         var size = GetPadSize(PaddingMode.ZeroPadded);
 
-        var val = IntConverter.ToUInt128(value);
+        var val = CalculatorMath.ToUInt128Unsigned(value);
         var pad = (size * 8 + 2) / 3;
         var begin = sb.Length;
         for (int i = pad - 1; i >= 0; i--)
@@ -906,7 +907,7 @@ class Program {
             var size = GetPadSize(paddingMode);
 
             if (!signed)
-                value = IntConverter.ToUInt128(value);
+                value = CalculatorMath.ToUInt128Unsigned(value);
 
             sb.AppendFormat(format switch {
                 IntegerFormat.Hexadecimal => upper ? $"{{0:X{size * 2}}}" : $"{{0:x{size * 2}}}",
@@ -934,7 +935,7 @@ class Program {
 
     void FormatBinaryFancy(StringBuilder sb, object value) {
         var bit = _calc.WordBytes * 8;
-        var val = IntConverter.ToUInt128(value);
+        var val = CalculatorMath.ToUInt128Unsigned(value);
 
         while (bit >= 32) {
             sb.Append($"{bit - 1,-3}          {bit - 8,3}    {bit - 9,-3}          {bit - 16,3}    ");
@@ -1065,17 +1066,17 @@ class Program {
         };
         for (int i = 0; i < stackItems.Count; i++) {
             var entry = stackItems[stackItems.Count - i - 1];
-            var value = printed[i];
-            if (_config.PaddingMode == PaddingMode.RightJustified)
-                value = value.PadLeft(maxLength);
+            var value = new StringBuilder(printed[i]);
+            if (_config.PaddingMode == PaddingMode.RightJustified && value.Length < maxLength)
+                value.Insert(0, " ", maxLength - value.Length);
             if (_config.Base) {
-                value = baseString + value;
+                value.Insert(0, baseString);
             }
             if (_config.Index)
-                value = $"{printed.Count - i,4}  {value}";
+                value.Insert(0, $"{printed.Count - i,4}  ");
             if (entry.Comment != null)
-                value = value + " ; " + entry.Comment;
-            Write(value);
+                value.AppendFormat(" ; {0}", entry.Comment);
+            Write(value.ToString());
         }
     }
 
