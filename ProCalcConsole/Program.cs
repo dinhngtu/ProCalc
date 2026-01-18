@@ -19,8 +19,6 @@ class Program {
     ResultFlags _flags = 0;
 
     readonly ClipboardManager _clipboard = new();
-    [SupportedOSPlatformGuard("windows")]
-    readonly bool isWindows = OperatingSystem.IsWindows();
 
     Program(ProgramConfig config) {
         _config = config;
@@ -54,10 +52,10 @@ class Program {
         }
 
         var program = new Program(config);
-        return program.DoMain();
+        return program.Run();
     }
 
-    object ReadConsoleInput() {
+    int Run() {
         if (isWindows)
             return ConsoleEx.ReadConsoleInput();
         else
@@ -66,9 +64,9 @@ class Program {
 
     int DoMain() {
         uint oldIm = 0, oldOm = 0;
-        if (isWindows) {
+        if (ConsoleEx.IsWindows) {
             try {
-                (oldIm, oldOm) = ConsoleEx.EnableTuiMode();
+                (oldIm, oldOm) = WindowsConsole.EnableTuiMode();
             }
             catch {
                 Console.WriteLine("Not a terminal");
@@ -79,7 +77,7 @@ class Program {
             _calc.Push(0, null, null);
             Refresh(RefreshFlags.Screen);
             while (!_exit) {
-                var cin = ReadConsoleInput();
+                var cin = ConsoleEx.ReadConsoleInput();
                 switch (cin) {
                     case ConsoleKeyInfo key:
                         HandleKey(key);
@@ -93,8 +91,8 @@ class Program {
             return 0;
         }
         finally {
-            if (isWindows)
-                ConsoleEx.RestoreMode(oldIm, oldOm);
+            if (ConsoleEx.IsWindows)
+                WindowsConsole.RestoreMode(oldIm, oldOm);
         }
     }
 
@@ -130,7 +128,7 @@ class Program {
         Console.SetCursorPosition(0, Console.WindowHeight - 1);
         Console.Write("Press any key...");
         while (true)
-            if (ReadConsoleInput() is ConsoleKeyInfo)
+            if (ConsoleEx.ReadConsoleInput() is ConsoleKeyInfo)
                 break;
     }
 
@@ -965,7 +963,7 @@ class Program {
 
         Console.Clear();
 
-        Write("Hex:");
+        ConsoleEx.Write("Hex:");
         sb.Clear();
         FormatValueRaw(
             sb,
@@ -975,10 +973,10 @@ class Program {
             4,
             _config.PaddingMode,
             _config.Upper);
-        Write(sb.ToString());
+        ConsoleEx.Write(sb.ToString());
 
-        Write("");
-        Write("Dec (unsigned):");
+        ConsoleEx.Write("");
+        ConsoleEx.Write("Dec (unsigned):");
         sb.Clear();
         FormatValueRaw(
             sb,
@@ -988,8 +986,8 @@ class Program {
             3,
             _config.PaddingMode,
             _config.Upper);
-        Write(sb.ToString());
-        Write("Dec (signed):");
+        ConsoleEx.Write(sb.ToString());
+        ConsoleEx.Write("Dec (signed):");
         sb.Clear();
         FormatValueRaw(
             sb,
@@ -999,10 +997,10 @@ class Program {
             3,
             _config.PaddingMode,
             _config.Upper);
-        Write(sb.ToString());
+        ConsoleEx.Write(sb.ToString());
 
-        Write("");
-        Write("Oct:");
+        ConsoleEx.Write("");
+        ConsoleEx.Write("Oct:");
         sb.Clear();
         FormatValueRaw(
             sb,
@@ -1012,14 +1010,14 @@ class Program {
             3,
             _config.PaddingMode,
             _config.Upper);
-        Write(sb.ToString());
+        ConsoleEx.Write(sb.ToString());
 
-        Write("");
-        Write("Bin:");
+        ConsoleEx.Write("");
+        ConsoleEx.Write("Bin:");
         sb.Clear();
         FormatBinaryFancy(sb, value);
         foreach (var line in sb.ToString().Split('\n'))
-            Write(line);
+            ConsoleEx.Write(line);
 
         Pause();
     }
@@ -1028,7 +1026,7 @@ class Program {
         var printable = Console.WindowHeight - 2;
         if (printable < calc.Count) {
             printable--;
-            Write($"...{calc.Count - printable}");
+            ConsoleEx.Write($"...{calc.Count - printable}");
         }
 
         var stackItems = calc.GetStackItems(Math.Min(printable, calc.Count)).ToList();
@@ -1079,7 +1077,7 @@ class Program {
                 value.Insert(0, $"{printed.Count - i,4}  ");
             if (entry.Comment != null)
                 value.AppendFormat(" ; {0}", entry.Comment);
-            Write(value.ToString());
+            ConsoleEx.Write(value.ToString());
         }
     }
 
@@ -1111,7 +1109,7 @@ class Program {
         }
 
         var visible = input.AsSpan(_inputScroll, Math.Min(usableWidth, input.Length - _inputScroll));
-        Write(visible, inputLineWidth, _inputScroll, input.Length);
+        ConsoleEx.Write(visible, inputLineWidth, _inputScroll, input.Length);
         Console.SetCursorPosition(cursorCol, Console.WindowHeight - 1);
     }
 
@@ -1146,7 +1144,7 @@ class Program {
                     statusFormat = "{0}{1,-6} (F234)  {2} (F5678)  {3,5} {4,5} {5} {6} {7,5} {8} (^901234)  {9}{10}";
                 else
                     statusFormat = "{0}{1,-6}    {2}    {3,5} {4,5} {5} {6} {7,5} {8}    {9}{10}";
-                Write(string.Format(
+                ConsoleEx.Write(string.Format(
                     statusFormat,
                     _config.Signed ? "S" : "U",
                     _config.Type,
@@ -1171,14 +1169,14 @@ class Program {
                 PrintStack(_calc);
 
                 while (Console.CursorTop < height - 1)
-                    Write("");
+                    ConsoleEx.Write("");
             }
 
             if (flags.HasFlag(RefreshFlags.Input)) {
                 Console.SetCursorPosition(0, height - 1);
                 if (ex != null) {
                     _ilm = InputLineMode.Exception;
-                    Write(ex.Message, width: width - 1);
+                    ConsoleEx.Write(ex.Message, width: width - 1);
                     Console.Beep();
                 }
                 else {
