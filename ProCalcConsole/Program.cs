@@ -7,7 +7,7 @@ using System.Text;
 class Program {
     IRPNCalculator _calc;
 
-    readonly ProgramConfig _config;
+    ProgramConfig _config;
 
     readonly StringBuilder _input = new();
     int _inputCursor = 0;
@@ -56,13 +56,6 @@ class Program {
     }
 
     int Run() {
-        if (isWindows)
-            return ConsoleEx.ReadConsoleInput();
-        else
-            return Console.ReadKey(true);
-    }
-
-    int DoMain() {
         uint oldIm = 0, oldOm = 0;
         if (ConsoleEx.IsWindows) {
             try {
@@ -147,14 +140,11 @@ class Program {
                 Console.WriteLine("""
                     Mode:
                     F5-F8 = hex/dec/oct/bin                  F2 = toggle signed/unsigned
-                    F3/F4 = truncate/extend (Ctrl inverts S/U)
-                    Ctrl+9 = toggle digit grouping           Ctrl+0 = toggle zero pad
-                    Ctrl+1 = toggle upper/lowercase hex      Ctrl+2 = print index
-                    Ctrl+3 = toggle base display on stack    Ctrl+4 = toggle current base input
+                    F3/F4 = set word size (Ctrl inverts S/U) F12 = settings
 
                     Editing:
                     h/x/n/o/t/b/y = base prefixes/suffixes
-                    Ctrl+c/v = copy/paste                    " = swap comment of index
+                    Ctrl+c/v = copy/paste                    `"` = swap comment of index
                     Append `;` to add a comment              Use `index:comment` to set comment
 
                     Stack:
@@ -242,29 +232,13 @@ class Program {
             case ConsoleKey.F8 when key.Modifiers == ConsoleModifiers.None:
                 _config.Format = IntegerFormat.Binary;
                 break;
-            case ConsoleKey.D9 when key.Modifiers == ConsoleModifiers.Control:
-                _config.Grouping = !_config.Grouping;
-                break;
-            case ConsoleKey.D0 when key.Modifiers == ConsoleModifiers.Control:
-                _config.PaddingMode = _config.PaddingMode switch {
-                    PaddingMode.None => PaddingMode.RightJustified,
-                    PaddingMode.RightJustified => PaddingMode.ZeroPadded,
-                    PaddingMode.ZeroPadded => PaddingMode.None,
-                    _ => PaddingMode.None,
-                };
-                break;
-            case ConsoleKey.D1 when key.Modifiers == ConsoleModifiers.Control:
-                _config.Upper = !_config.Upper;
-                break;
-            case ConsoleKey.D2 when key.Modifiers == ConsoleModifiers.Control:
-                _config.ShowStackIndex = !_config.ShowStackIndex;
-                break;
-            case ConsoleKey.D3 when key.Modifiers == ConsoleModifiers.Control:
-                _config.ShowStackBase = !_config.ShowStackBase;
-                break;
-            case ConsoleKey.D4 when key.Modifiers == ConsoleModifiers.Control:
-                _config.InputUsesCurrentBase = !_config.InputUsesCurrentBase;
-                break;
+            case ConsoleKey.F12 when key.Modifiers == ConsoleModifiers.None: {
+                    refresh = RefreshFlags.Screen;
+                    var configPage = new ConfigPage(_config);
+                    configPage.Run();
+                    _config = configPage.Config;
+                    break;
+                }
             case ConsoleKey.LeftWindows:
             case ConsoleKey.RightWindows:
                 refresh = RefreshFlags.None;
@@ -821,29 +795,6 @@ class Program {
         }
     }
 
-    void Write(ReadOnlySpan<char> text, int width = -1, int scroll = 0, int totalLength = -1) {
-        if (width < 0)
-            width = Console.WindowWidth;
-        if (totalLength < 0)
-            totalLength = text.Length;
-
-        var display = new StringBuilder();
-        if (scroll > 0)
-            display.Append('<');
-        display.Append(text);
-        if (totalLength > scroll + text.Length)
-            display.Append('>');
-
-        if (display.Length > width) {
-            display.Remove(width - 1, display.Length - width + 1);
-            display.Append('>');
-        }
-        else {
-            display.Append(' ', width - display.Length);
-        }
-        Console.Write(display.ToString());
-    }
-
     int GetPadSize(PaddingMode paddingMode) {
         if (paddingMode != PaddingMode.ZeroPadded)
             return 0;
@@ -1141,25 +1092,14 @@ class Program {
                 };
                 string statusFormat;
                 if (_config.ShowHints)
-                    statusFormat = "{0}{1,-6} (F234)  {2} (F5678)  {3,5} {4,5} {5} {6} {7,5} {8} (^901234)  {9}{10}";
+                    statusFormat = "{0}{1,-6} (F234)  {2} (F5678)  {3}{4}";
                 else
-                    statusFormat = "{0}{1,-6}    {2}    {3,5} {4,5} {5} {6} {7,5} {8}    {9}{10}";
+                    statusFormat = "{0}{1,-6}    {2}    {3}{4}";
                 ConsoleEx.Write(string.Format(
                     statusFormat,
                     _config.Signed ? "S" : "U",
                     _config.Type,
                     mode,
-                    _config.Grouping ? "Group" : "Ungrp",
-                    _config.PaddingMode switch {
-                        PaddingMode.None => "Left",
-                        PaddingMode.RightJustified => "Right",
-                        PaddingMode.ZeroPadded => "Pad",
-                        _ => throw new NotImplementedException(),
-                    },
-                    _config.Upper ? "Upper" : "Lower",
-                    _config.ShowStackIndex ? "Index" : "NoIdx",
-                    _config.ShowStackBase ? "Base" : "NoBas",
-                    _config.InputUsesCurrentBase ? "IBase" : "NoIBs",
                     _flags.HasFlag(ResultFlags.Carry) ? "C" : " ",
                     _flags.HasFlag(ResultFlags.Overflow) ? "O" : " "));
             }
