@@ -4,6 +4,17 @@ using System.Numerics;
 namespace ProCalcCore;
 
 public static class CalculatorMath {
+    public static int ByteCount(object value) {
+        return value switch {
+            Int128 => 16,
+            long => 8,
+            int => 4,
+            short => 2,
+            sbyte => 1,
+            _ => throw new InvalidCastException(),
+        };
+    }
+
     public static UInt128 ToUInt128Unsigned(object value) {
         return value switch {
             Int128 val128 => UInt128.CreateTruncating(val128),

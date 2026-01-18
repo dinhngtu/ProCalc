@@ -1,7 +1,6 @@
 using ProCalcConsole;
 using ProCalcCore;
 using System.Globalization;
-using System.Runtime.Versioning;
 using System.Text;
 
 class Program {
@@ -132,7 +131,7 @@ class Program {
                 Console.WriteLine("""
                     Mode:
                     F5-F8 = hex/dec/oct/bin                  F2 = toggle signed/unsigned
-                    F3/F4 = set word size (Ctrl inverts S/U) F12 = settings
+                    F3/F4 = trunc./extend (Ctrl inverts S/U) F12 = settings
 
                     Editing:
                     h/x/n/o/t/b/y = base prefixes/suffixes
@@ -290,7 +289,7 @@ class Program {
                         break;
                     var entry = _calc.Peek();
                     var sb = new StringBuilder();
-                    FormatValueRaw(
+                    Numerics.FormatValueRaw(
                         sb,
                         entry.Object,
                         _config.Format,
@@ -365,7 +364,7 @@ class Program {
                     var entry = _calc.Peek();
                     _calc.DoStackOp(StackOperation.Drop, 1);
                     try {
-                        FormatValueRaw(
+                        Numerics.FormatValueRaw(
                             _input,
                             entry.Object,
                             _config.Format,
@@ -450,8 +449,8 @@ class Program {
                 }
                 break;
             case ConsoleKey.P when key.Modifiers == ConsoleModifiers.None:
-                PrintValue(_calc.Peek().Object);
                 refresh = RefreshFlags.Screen;
+                new DisplayPage(_config).Run(_calc.Peek().Object);
                 break;
             default:
                 return false;
@@ -787,184 +786,6 @@ class Program {
         }
     }
 
-    int GetPadSize(PaddingMode paddingMode) {
-        if (paddingMode != PaddingMode.ZeroPadded)
-            return 0;
-        return _calc.WordBytes;
-    }
-
-    void FormatOctalRaw(
-        StringBuilder sb,
-        object value,
-        PaddingMode paddingMode) {
-        var size = GetPadSize(PaddingMode.ZeroPadded);
-
-        var val = CalculatorMath.ToUInt128Unsigned(value);
-        var pad = (size * 8 + 2) / 3;
-        var begin = sb.Length;
-        for (int i = pad - 1; i >= 0; i--)
-            sb.Append("01234567"[(int)(val >> (i * 3) & 7)]);
-        if (paddingMode != PaddingMode.ZeroPadded)
-            while (sb.Length > begin + 1 && sb[begin] == '0')
-                sb.Remove(begin, 1);
-    }
-
-    void ApplyGrouping(StringBuilder sb, int groupSize) {
-        if (groupSize <= 0 || sb.Length <= groupSize) return;
-
-        int start = (sb.Length > 0 && sb[0] == '-') ? 1 : 0;
-        int contentLen = sb.Length - start;
-        int separators = (contentLen - 1) / groupSize;
-        if (separators <= 0) return;
-
-        int oldLen = sb.Length;
-        int newLen = oldLen + separators;
-        sb.Length = newLen;
-
-        int readPtr = oldLen - 1;
-        int writePtr = newLen - 1;
-        int count = 0;
-
-        while (readPtr >= start) {
-            sb[writePtr--] = sb[readPtr--];
-            count++;
-            if (count == groupSize && readPtr >= start) {
-                sb[writePtr--] = ' ';
-                count = 0;
-            }
-        }
-    }
-
-    void FormatValueRaw(
-        StringBuilder sb,
-        object value,
-        IntegerFormat format,
-        bool signed,
-        int group,
-        PaddingMode paddingMode,
-        bool upper) {
-
-        if (format == IntegerFormat.Octal) {
-            FormatOctalRaw(sb, value, paddingMode: paddingMode);
-        }
-        else {
-            var size = GetPadSize(paddingMode);
-
-            if (!signed)
-                value = CalculatorMath.ToUInt128Unsigned(value);
-
-            sb.AppendFormat(format switch {
-                IntegerFormat.Hexadecimal => upper ? $"{{0:X{size * 2}}}" : $"{{0:x{size * 2}}}",
-                IntegerFormat.Decimal => "{0:G}",
-                IntegerFormat.Binary => $"{{0:B{size * 8}}}",
-                _ => throw new InvalidOperationException(),
-            }, value);
-        }
-
-        if (group > 0)
-            ApplyGrouping(sb, group);
-    }
-
-    void FormatBinaryFancyRow(StringBuilder sb, UInt128 val, int startBit, int count) {
-        for (int i = count - 1; i >= 0; i--) {
-            sb.Append(((val >> (startBit + i)) & 1) != 0 ? '1' : '0');
-            sb.Append(' ');
-            if (i % 4 == 0) {
-                sb.Append(' ');
-                if (i % 8 == 0)
-                    sb.Append("  ");
-            }
-        }
-    }
-
-    void FormatBinaryFancy(StringBuilder sb, object value) {
-        var bit = _calc.WordBytes * 8;
-        var val = CalculatorMath.ToUInt128Unsigned(value);
-
-        while (bit >= 32) {
-            sb.Append($"{bit - 1,-3}          {bit - 8,3}    {bit - 9,-3}          {bit - 16,3}    ");
-            sb.Append($"{bit - 17,-3}          {bit - 24,3}    {bit - 25,-3}          {bit - 32,3}\n");
-            FormatBinaryFancyRow(sb, val, bit - 32, 32);
-            sb.Append("\n\n");
-            bit -= 32;
-        }
-        if (bit >= 16) {
-            sb.Append($"{bit - 1,-3}          {bit - 8,3}    {bit - 9,-3}          {bit - 16,3}\n");
-            FormatBinaryFancyRow(sb, val, bit - 16, 16);
-            sb.Append("\n\n");
-            bit -= 16;
-        }
-        if (bit >= 8) {
-            sb.Append($"{bit - 1,-3}          {bit - 8,3}\n");
-            FormatBinaryFancyRow(sb, val, bit - 8, 8);
-            sb.Append("\n\n");
-        }
-    }
-
-    void PrintValue(object value) {
-        var sb = new StringBuilder(1024);
-
-        Console.Clear();
-
-        ConsoleEx.Write("Hex:");
-        sb.Clear();
-        FormatValueRaw(
-            sb,
-            value,
-            IntegerFormat.Hexadecimal,
-            false,
-            4,
-            _config.PaddingMode,
-            _config.Upper);
-        ConsoleEx.Write(sb.ToString());
-
-        ConsoleEx.Write("");
-        ConsoleEx.Write("Dec (unsigned):");
-        sb.Clear();
-        FormatValueRaw(
-            sb,
-            value,
-            IntegerFormat.Decimal,
-            false,
-            3,
-            _config.PaddingMode,
-            _config.Upper);
-        ConsoleEx.Write(sb.ToString());
-        ConsoleEx.Write("Dec (signed):");
-        sb.Clear();
-        FormatValueRaw(
-            sb,
-            value,
-            IntegerFormat.Decimal,
-            true,
-            3,
-            _config.PaddingMode,
-            _config.Upper);
-        ConsoleEx.Write(sb.ToString());
-
-        ConsoleEx.Write("");
-        ConsoleEx.Write("Oct:");
-        sb.Clear();
-        FormatValueRaw(
-            sb,
-            value,
-            IntegerFormat.Octal,
-            _config.Signed,
-            3,
-            _config.PaddingMode,
-            _config.Upper);
-        ConsoleEx.Write(sb.ToString());
-
-        ConsoleEx.Write("");
-        ConsoleEx.Write("Bin:");
-        sb.Clear();
-        FormatBinaryFancy(sb, value);
-        foreach (var line in sb.ToString().Split('\n'))
-            ConsoleEx.Write(line);
-
-        Pause();
-    }
-
     void PrintStack(IRPNCalculator calc) {
         var printable = Console.WindowHeight - 2;
         if (printable < calc.Count) {
@@ -989,7 +810,7 @@ class Program {
             };
             if (!_config.Grouping)
                 group = 0;
-            FormatValueRaw(
+            Numerics.FormatValueRaw(
                 sb,
                 entry.Object,
                 format: _config.Format,
