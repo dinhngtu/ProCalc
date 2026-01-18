@@ -9,10 +9,11 @@ class ProgramConfig {
     public bool Grouping;
     public PaddingMode PaddingMode;
     public bool Upper;
-    public bool Index;
-    public bool Base;
+    public bool ShowStackIndex;
+    public bool ShowStackBase;
     public bool FakeNumpad;
     public bool ShowHints;
+    public bool InputUsesCurrentBase;
 
     public static ProgramConfig CreateDefault() => new() {
         Format = IntegerFormat.Decimal,
@@ -21,10 +22,11 @@ class ProgramConfig {
         Grouping = true,
         PaddingMode = PaddingMode.RightJustified,
         Upper = true,
-        Index = true,
-        Base = false,
+        ShowStackIndex = true,
+        ShowStackBase = false,
         FakeNumpad = false,
         ShowHints = false,
+        InputUsesCurrentBase = true,
     };
 
     public static string CommandLineHelp => """
@@ -36,9 +38,10 @@ class ProgramConfig {
         -padding <padding>      Set padding mode
         -upper/-lower           Set hexadecimal case
         -index/-noindex         Show stack index
-        -base/-nobase           Show base
+        -base/-nobase           Show stack base
         -numpad/-nonumpad       Enable fake numpad
         -hints/-nohints         Show status hints
+        -inputbase/-noinputbase Input uses current base
         -?                      Show this message
         """;
 
@@ -98,17 +101,17 @@ class ProgramConfig {
             }
 
             else if ("-index".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                config.Index = true;
+                config.ShowStackIndex = true;
             }
             else if ("-noindex".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                config.Index = false;
+                config.ShowStackIndex = false;
             }
 
             else if ("-base".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                config.Base = true;
+                config.ShowStackBase = true;
             }
             else if ("-nobase".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
-                config.Base = false;
+                config.ShowStackBase = false;
             }
 
             else if ("-numpad".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
@@ -123,6 +126,13 @@ class ProgramConfig {
             }
             else if ("-nohints".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.ShowHints = false;
+            }
+
+            else if ("-inputbase".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                config.InputUsesCurrentBase = true;
+            }
+            else if ("-noinputbase".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                config.InputUsesCurrentBase = false;
             }
 
             else if ("-?".Equals(arg, StringComparison.OrdinalIgnoreCase)) {

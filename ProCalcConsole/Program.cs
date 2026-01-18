@@ -152,7 +152,7 @@ class Program {
                     F3/F4 = truncate/extend (Ctrl inverts S/U)
                     Ctrl+9 = toggle digit grouping           Ctrl+0 = toggle zero pad
                     Ctrl+1 = toggle upper/lowercase hex      Ctrl+2 = print index
-                    Ctrl+3 = toggle base display on stack
+                    Ctrl+3 = toggle base display on stack    Ctrl+4 = toggle current base input
 
                     Editing:
                     h/x/n/o/t/b/y = base prefixes/suffixes
@@ -259,10 +259,13 @@ class Program {
                 _config.Upper = !_config.Upper;
                 break;
             case ConsoleKey.D2 when key.Modifiers == ConsoleModifiers.Control:
-                _config.Index = !_config.Index;
+                _config.ShowStackIndex = !_config.ShowStackIndex;
                 break;
             case ConsoleKey.D3 when key.Modifiers == ConsoleModifiers.Control:
-                _config.Base = !_config.Base;
+                _config.ShowStackBase = !_config.ShowStackBase;
+                break;
+            case ConsoleKey.D4 when key.Modifiers == ConsoleModifiers.Control:
+                _config.InputUsesCurrentBase = !_config.InputUsesCurrentBase;
                 break;
             case ConsoleKey.LeftWindows:
             case ConsoleKey.RightWindows:
@@ -795,7 +798,7 @@ class Program {
         try {
             var entry = _calc.ParseEntry(
                 original,
-                stack ? IntegerFormat.Decimal : _config.Format,
+                (stack || !_config.InputUsesCurrentBase) ? IntegerFormat.Decimal : _config.Format,
                 out var commentChar);
             if (entry == null)
                 return;
@@ -1069,10 +1072,10 @@ class Program {
             var value = new StringBuilder(printed[i]);
             if (_config.PaddingMode == PaddingMode.RightJustified && value.Length < maxLength)
                 value.Insert(0, " ", maxLength - value.Length);
-            if (_config.Base) {
+            if (_config.ShowStackBase) {
                 value.Insert(0, baseString);
             }
-            if (_config.Index)
+            if (_config.ShowStackIndex)
                 value.Insert(0, $"{printed.Count - i,4}  ");
             if (entry.Comment != null)
                 value.AppendFormat(" ; {0}", entry.Comment);
@@ -1140,9 +1143,9 @@ class Program {
                 };
                 string statusFormat;
                 if (_config.ShowHints)
-                    statusFormat = "{0}{1,-6} (F234)  {2} (F5678)  {3,5} {4,5} {5} {6} {7,5} (^90123)  {8}{9}";
+                    statusFormat = "{0}{1,-6} (F234)  {2} (F5678)  {3,5} {4,5} {5} {6} {7,5} {8} (^901234)  {9}{10}";
                 else
-                    statusFormat = "{0}{1,-6}    {2}    {3,5} {4,5} {5} {6} {7,5}    {8}{9}";
+                    statusFormat = "{0}{1,-6}    {2}    {3,5} {4,5} {5} {6} {7,5} {8}    {9}{10}";
                 Write(string.Format(
                     statusFormat,
                     _config.Signed ? "S" : "U",
@@ -1156,8 +1159,9 @@ class Program {
                         _ => throw new NotImplementedException(),
                     },
                     _config.Upper ? "Upper" : "Lower",
-                    _config.Index ? "Index" : "NoIdx",
-                    _config.Base ? "Base" : "NoBas",
+                    _config.ShowStackIndex ? "Index" : "NoIdx",
+                    _config.ShowStackBase ? "Base" : "NoBas",
+                    _config.InputUsesCurrentBase ? "IBase" : "NoIBs",
                     _flags.HasFlag(ResultFlags.Carry) ? "C" : " ",
                     _flags.HasFlag(ResultFlags.Overflow) ? "O" : " "));
             }
