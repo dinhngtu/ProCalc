@@ -117,14 +117,6 @@ class Program {
         }
     }
 
-    void Pause() {
-        Console.SetCursorPosition(0, Console.WindowHeight - 1);
-        Console.Write("Press any key...");
-        while (true)
-            if (ConsoleEx.ReadConsoleInput() is ConsoleKeyInfo)
-                break;
-    }
-
     void ResetInput() {
         _input.Clear();
         _inputCursor = 0;
@@ -164,7 +156,7 @@ class Program {
                     Shift+2 = pow2                           Shift+3/Ctrl+Shift+3 = align up/down
                     Alt+Shift+` = byteswap
                     """);
-                Pause();
+                ConsoleEx.Pause();
                 break;
             default:
                 return false;

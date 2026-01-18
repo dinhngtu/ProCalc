@@ -4,7 +4,6 @@ using System.Text;
 namespace ProCalcConsole;
 
 static class ConsoleEx {
-    [SupportedOSPlatformGuard("windows")]
     static readonly bool _isWindows = OperatingSystem.IsWindows();
 
     [SupportedOSPlatformGuard("windows")]
@@ -38,5 +37,13 @@ static class ConsoleEx {
             display.Append(' ', width - display.Length);
         }
         Console.Write(display.ToString());
+    }
+
+    public static void Pause() {
+        Console.SetCursorPosition(0, Console.WindowHeight - 1);
+        Console.Write("Press any key...");
+        while (true)
+            if (ReadConsoleInput() is ConsoleKeyInfo)
+                break;
     }
 }
