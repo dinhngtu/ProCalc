@@ -24,19 +24,23 @@ class DisplayPage(ProgramConfig config) {
             sb.Append($"    {bit - 4,3}      {bit - 8,3}        {bit - 12,3}      {bit - 16,3}");
             sb.Append($"        {bit - 20,3}      {bit - 24,3}        {bit - 28,3}      {bit - 32,3}\n");
             FormatBinaryFancyRow(sb, val, bit - 32, 32);
-            sb.Append("\n\n");
             bit -= 32;
+            if (bit > 0)
+                sb.Append("\n\n");
         }
         if (bit >= 16) {
             sb.Append($"    {bit - 4,-3}      {bit - 8,3}        {bit - 9,3}      {bit - 16,3}\n");
             FormatBinaryFancyRow(sb, val, bit - 16, 16);
-            sb.Append("\n\n");
             bit -= 16;
+            if (bit > 0)
+                sb.Append("\n\n");
         }
         if (bit >= 8) {
             sb.Append($"    {bit - 4,3}      {bit - 8,3}\n");
+            bit -= 8;
             FormatBinaryFancyRow(sb, val, bit - 8, 8);
-            sb.Append("\n\n");
+            if (bit > 0)
+                sb.Append("\n\n");
         }
     }
 
@@ -100,6 +104,32 @@ class DisplayPage(ProgramConfig config) {
         FormatBinaryFancy(sb, value, CalculatorMath.ByteCount(value));
         foreach (var line in sb.ToString().Split('\n'))
             ConsoleEx.Write(line);
+
+        switch (value) {
+            case long v: {
+                    ConsoleEx.Write("");
+                    double f = BitConverter.Int64BitsToDouble(v);
+                    ConsoleEx.Write("Double:");
+                    ConsoleEx.Write(f.ToString(config.Upper ? "R" : "r"));
+                    break;
+                }
+            case int v: {
+                    ConsoleEx.Write("");
+                    float f = BitConverter.Int32BitsToSingle(v);
+                    ConsoleEx.Write("Single:");
+                    ConsoleEx.Write(f.ToString(config.Upper ? "R" : "r"));
+                    break;
+                }
+            case short v: {
+                    ConsoleEx.Write("");
+                    Half f = BitConverter.Int16BitsToHalf(v);
+                    ConsoleEx.Write("Half:");
+                    ConsoleEx.Write(f.ToString(config.Upper ? "R" : "r"));
+                    break;
+                }
+            default:
+                break;
+        }
 
         ConsoleEx.Pause();
     }
