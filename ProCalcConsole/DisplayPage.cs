@@ -21,20 +21,20 @@ class DisplayPage(ProgramConfig config) {
         var val = CalculatorMath.ToUInt128Unsigned(value);
 
         while (bit >= 32) {
-            sb.Append($"{bit - 1,-3}          {bit - 8,3}    {bit - 9,-3}          {bit - 16,3}    ");
-            sb.Append($"{bit - 17,-3}          {bit - 24,3}    {bit - 25,-3}          {bit - 32,3}\n");
+            sb.Append($"    {bit - 4,3}      {bit - 8,3}        {bit - 12,3}      {bit - 16,3}");
+            sb.Append($"        {bit - 20,3}      {bit - 24,3}        {bit - 28,3}      {bit - 32,3}\n");
             FormatBinaryFancyRow(sb, val, bit - 32, 32);
             sb.Append("\n\n");
             bit -= 32;
         }
         if (bit >= 16) {
-            sb.Append($"{bit - 1,-3}          {bit - 8,3}    {bit - 9,-3}          {bit - 16,3}\n");
+            sb.Append($"    {bit - 4,-3}      {bit - 8,3}        {bit - 9,3}      {bit - 16,3}\n");
             FormatBinaryFancyRow(sb, val, bit - 16, 16);
             sb.Append("\n\n");
             bit -= 16;
         }
         if (bit >= 8) {
-            sb.Append($"{bit - 1,-3}          {bit - 8,3}\n");
+            sb.Append($"    {bit - 4,3}      {bit - 8,3}\n");
             FormatBinaryFancyRow(sb, val, bit - 8, 8);
             sb.Append("\n\n");
         }
