@@ -908,10 +908,10 @@ class Program {
             if (flags.HasFlag(RefreshFlags.Status)) {
                 Console.SetCursorPosition(0, 0);
                 var mode = _config.Format switch {
-                    IntegerFormat.Hexadecimal => "Hex",
-                    IntegerFormat.Decimal => "Dec",
-                    IntegerFormat.Octal => "Oct",
-                    IntegerFormat.Binary => "Bin",
+                    IntegerFormat.Hexadecimal => "HexDOB",
+                    IntegerFormat.Decimal => "HDecOB",
+                    IntegerFormat.Octal => "HDOctB",
+                    IntegerFormat.Binary => "HDOBin",
                     _ => throw new NotImplementedException(),
                 };
                 string statusFormat;
