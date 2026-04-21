@@ -240,6 +240,17 @@ class Program {
         return true;
     }
 
+    void Backspace() {
+        if (_inputCursor > 0) {
+            var last = _input[--_inputCursor];
+            _input.Remove(_inputCursor, 1);
+            if (last == ';' || last == ':') {
+                var input = _input.ToString();
+                _comment = input.Contains(';') || input.Contains(':');
+            }
+        }
+    }
+
     bool HandleEditKeys(ConsoleKeyInfo key, out RefreshFlags refresh) {
         refresh = RefreshFlags.Input;
         switch (key.Key) {
@@ -254,8 +265,7 @@ class Program {
                 refresh = RefreshFlags.Screen | RefreshFlags.Clear;
                 break;
             case ConsoleKey.Backspace when key.Modifiers == ConsoleModifiers.None:
-                if (_inputCursor > 0)
-                    _input.Remove(--_inputCursor, 1);
+                Backspace();
                 break;
             case ConsoleKey.Delete when key.Modifiers == ConsoleModifiers.None:
                 if (_input.Length <= 0 || _inputCursor >= _input.Length)
@@ -674,11 +684,12 @@ class Program {
         refresh = RefreshFlags.Input;
         if (key.Modifiers != ConsoleModifiers.None && key.Modifiers != ConsoleModifiers.Shift)
             return false;
+        if (key.KeyChar == ';' || key.KeyChar == ':') {
+            _comment = true;
+            _input.Insert(_inputCursor++, key.KeyChar);
+            return true;
+        }
         switch (key.Key) {
-            case ConsoleKey.Oem1:
-                _comment = true;
-                _input.Insert(_inputCursor++, key.KeyChar);
-                break;
             case ConsoleKey.A:
             case ConsoleKey.B:
             case ConsoleKey.C:
