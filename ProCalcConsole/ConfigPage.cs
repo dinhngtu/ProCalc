@@ -110,9 +110,18 @@ class ConfigPage {
                 case ConsoleKey.DownArrow when key.Modifiers == ConsoleModifiers.None:
                     _active = Math.Min(_active + 1, Settings.Count - 1);
                     break;
+                case ConsoleKey.Home when key.Modifiers == ConsoleModifiers.None:
+                case ConsoleKey.PageUp when key.Modifiers == ConsoleModifiers.None:
+                    _active = 0;
+                    break;
+                case ConsoleKey.End when key.Modifiers == ConsoleModifiers.None:
+                case ConsoleKey.PageDown when key.Modifiers == ConsoleModifiers.None:
+                    _active = Settings.Count - 1;
+                    break;
                 case ConsoleKey.Spacebar when key.Modifiers == ConsoleModifiers.None:
                     Settings[_active].Toggle(Config);
                     break;
+                case ConsoleKey.Q when key.Modifiers == ConsoleModifiers.None:
                 case ConsoleKey.D when key.Modifiers == ConsoleModifiers.Control:
                 case ConsoleKey.Escape when key.Modifiers == ConsoleModifiers.None:
                     _exit = true;
