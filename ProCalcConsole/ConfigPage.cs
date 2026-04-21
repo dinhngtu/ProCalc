@@ -80,6 +80,7 @@ class ConfigPage {
             previous = Console.CursorVisible;
         try {
             Console.CursorVisible = false;
+            Console.Clear();
             Refresh();
             while (!_exit) {
                 var cin = ConsoleEx.ReadConsoleInput();
