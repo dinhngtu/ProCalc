@@ -812,15 +812,33 @@ class Program {
 
     void PrintStack(IRPNCalculator calc) {
         var printable = Console.WindowHeight - 2;
-        if (printable < calc.Count) {
-            printable--;
-            ConsoleEx.Write($"...{calc.Count - printable}");
+        int printableStack;
+        if (_config.ShowLastStack && _config.ShowStackIndex)
+            printableStack = Math.Min(printable, calc.Count + calc.LastDepth()) - calc.LastDepth();
+        else
+            printableStack = Math.Min(printable, calc.Count);
+
+        int remaining = -1; // unadjusted
+        int adjusted = 0;
+        if (printableStack < calc.Count) {
+            printableStack--;
+            remaining = calc.Count - printableStack;
+            adjusted = calc.LastDepth();
         }
 
-        var printableStack = Math.Min(printable, calc.Count);
         var stackItems = calc.GetStackItems(printableStack)
             .Select((x, i) => new KeyValuePair<string, IStackEntry>((i + 1).ToString(), x))
             .ToList();
+        if (_config.ShowLastStack && _config.ShowStackIndex) {
+            List<string> names = ["Q", "W"];
+            for (int i = 0; i < Math.Min(calc.LastDepth(), names.Count); i++) {
+                var last = calc.Last(i);
+                if (last == null)
+                    break;
+                stackItems.Add(new(names[i], last));
+            }
+        }
+
         var maxLength = 0;
         List<string> printed = [];
         var sb = new StringBuilder(16 * 9 + 8);
@@ -857,6 +875,9 @@ class Program {
             _ => throw new NotImplementedException(),
         };
         for (int i = 0; i < stackItems.Count; i++) {
+            if (remaining >= 0 && i == adjusted) {
+                ConsoleEx.Write($"...{remaining}");
+            }
             var entry = stackItems[stackItems.Count - i - 1];
             var value = new StringBuilder(printed[i]);
             if (_config.PaddingMode == PaddingMode.RightJustified && value.Length < maxLength)
@@ -910,7 +931,7 @@ class Program {
         try {
             Console.CursorVisible = false;
 
-            if (width < 79 || height < 4) {
+            if (width < 79 || height < 6) {
                 Console.SetCursorPosition(0, 0);
                 Console.Clear();
                 Console.Write($"Window too small ({width}x{height})");

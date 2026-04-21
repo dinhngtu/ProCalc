@@ -15,6 +15,7 @@ class ProgramConfig {
     public bool ShowHints;
     public bool InputUsesCurrentBase;
     public bool AutoDismissErrors;
+    public bool ShowLastStack;
 
     public static ProgramConfig CreateDefault() => new() {
         Format = IntegerFormat.Decimal,
@@ -29,6 +30,7 @@ class ProgramConfig {
         ShowHints = false,
         InputUsesCurrentBase = true,
         AutoDismissErrors = false,
+        ShowLastStack = false,
     };
 
     public static string CommandLineHelp => """
@@ -45,6 +47,7 @@ class ProgramConfig {
         -[no]hints              Show status hints
         -[no]inputbase          Input uses current base
         -[no]autodismisserrors  Auto-dismiss errors
+        -[no]showlaststack      Show last stack
         -?                      Show this message
         """;
 
@@ -143,6 +146,13 @@ class ProgramConfig {
             }
             else if ("-noautodismisserrors".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.AutoDismissErrors = false;
+            }
+
+            else if ("-showlaststack".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                config.ShowLastStack = true;
+            }
+            else if ("-noshowlaststack".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                config.ShowLastStack = false;
             }
 
             else if ("-?".Equals(arg, StringComparison.OrdinalIgnoreCase)) {

@@ -68,6 +68,11 @@ class ConfigPage {
             Getter = pc => pc.AutoDismissErrors ? "x" : " ",
             Toggle = pc => pc.AutoDismissErrors = !pc.AutoDismissErrors,
         },
+        new() {
+            Name = "Show last stack",
+            Getter = pc => pc.ShowLastStack ? "x" : " ",
+            Toggle = pc => pc.ShowLastStack = !pc.ShowLastStack,
+        },
     ];
 
     public ConfigPage(ProgramConfig config) {
