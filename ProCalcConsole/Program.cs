@@ -817,7 +817,10 @@ class Program {
             ConsoleEx.Write($"...{calc.Count - printable}");
         }
 
-        var stackItems = calc.GetStackItems(Math.Min(printable, calc.Count)).ToList();
+        var printableStack = Math.Min(printable, calc.Count);
+        var stackItems = calc.GetStackItems(printableStack)
+            .Select((x, i) => new KeyValuePair<string, IStackEntry>((i + 1).ToString(), x))
+            .ToList();
         var maxLength = 0;
         List<string> printed = [];
         var sb = new StringBuilder(16 * 9 + 8);
@@ -836,7 +839,7 @@ class Program {
                 group = 0;
             Numerics.FormatValueRaw(
                 sb,
-                entry.Object,
+                entry.Value.Object,
                 format: _config.Format,
                 signed: _config.Signed,
                 group: group,
@@ -862,9 +865,9 @@ class Program {
                 value.Insert(0, baseString);
             }
             if (_config.ShowStackIndex)
-                value.Insert(0, $"{printed.Count - i,4}  ");
-            if (entry.Comment != null)
-                value.AppendFormat(" ; {0}", entry.Comment);
+                value.Insert(0, $"{entry.Key,4}  ");
+            if (entry.Value.Comment != null)
+                value.AppendFormat(" ; {0}", entry.Value.Comment);
             ConsoleEx.Write(value.ToString());
         }
     }
