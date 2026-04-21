@@ -154,7 +154,7 @@ class Program {
                     Carry operators (add Alt to use carry):
                     `+_` = add/subtract                      `{}` = rotate left/right
                     `<>` = shift (Ctrl inverts S/U)
-                    r = push CF/OF (Shift inverts S/U)       Ctrl+r = clear flags
+                    r = push CF/OF (Ctrl inverts S/U)        Shift+r = clear flags
 
                     Other operators:
                     `*%` = mul/rem                           `/` = div (Ctrl inverts S/U)
@@ -178,7 +178,7 @@ class Program {
                 _config.Signed = !_config.Signed;
                 break;
             case ConsoleKey.F3 when key.Modifiers == ConsoleModifiers.None:
-            case ConsoleKey.F3 when key.Modifiers == ConsoleModifiers.Shift: {
+            case ConsoleKey.F3 when key.Modifiers == ConsoleModifiers.Control: {
                     if (_config.Type == InputTypes.Int16) {
                         _config.Type = InputTypes.Int8;
                         _calc = _calc.ConvertTo(typeof(sbyte), false);
@@ -198,9 +198,9 @@ class Program {
                     break;
                 }
             case ConsoleKey.F4 when key.Modifiers == ConsoleModifiers.None:
-            case ConsoleKey.F4 when key.Modifiers == ConsoleModifiers.Shift: {
-                    var shifted = key.Modifiers.HasFlag(ConsoleModifiers.Shift);
-                    var signed = _config.Signed ^ shifted;
+            case ConsoleKey.F4 when key.Modifiers == ConsoleModifiers.Control: {
+                    var ctrl = key.Modifiers.HasFlag(ConsoleModifiers.Control);
+                    var signed = _config.Signed ^ ctrl;
                     if (_config.Type == InputTypes.Int8) {
                         _config.Type = InputTypes.Int16;
                         _calc = _calc.ConvertTo(typeof(short), signed);
@@ -588,12 +588,12 @@ class Program {
                 break;
 
             case ConsoleKey.R when key.Modifiers == ConsoleModifiers.None:
-            case ConsoleKey.R when key.Modifiers == ConsoleModifiers.Shift:
+            case ConsoleKey.R when key.Modifiers == ConsoleModifiers.Control:
                 if (_input.Length != 0)
                     throw new InvalidOperationException("Still editing");
 
                 _calc.Push(
-                    (key.Modifiers.HasFlag(ConsoleModifiers.Shift) ? oc : co) ? 1 : 0,
+                    (ctrl ? oc : co) ? 1 : 0,
                     null,
                     null);
                 break;
