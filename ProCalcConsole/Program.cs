@@ -470,6 +470,11 @@ class Program {
                 refresh = RefreshFlags.Screen;
                 new DisplayPage(_config).Run(_calc.Peek().Object);
                 break;
+            case ConsoleKey.Q when key.Modifiers == ConsoleModifiers.None:
+            case ConsoleKey.W when key.Modifiers == ConsoleModifiers.None:
+                var last = _calc.Last(key.Key == ConsoleKey.W ? 1 : 0) ?? throw new InvalidOperationException("No last");
+                _calc.Push(last);
+                break;
             default:
                 return false;
         }
