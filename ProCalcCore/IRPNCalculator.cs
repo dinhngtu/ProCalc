@@ -13,4 +13,6 @@ public interface IRPNCalculator {
     IEnumerable<IStackEntry> GetStackItems(int max = int.MaxValue);
     IRPNCalculator ConvertTo(Type type, bool signExtend);
     IStackEntry? ParseEntry(ReadOnlySpan<char> input, IntegerFormat format, out char commentChar);
+    IStackEntry? Last(int index);
+    int LastDepth();
 }

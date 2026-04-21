@@ -7,11 +7,14 @@ namespace ProCalcCore;
 public class RPNCalculator<T> : IRPNCalculator
     where T : struct, IBinaryInteger<T>, IMinMaxValue<T>, ISignedNumber<T> {
     public const int DefaultCapacity = 256;
+    public const int LastCapacity = 4;
 
     readonly Deque<StackEntry<T>> _stack;
+    readonly Deque<StackEntry<T>> _last;
 
     public RPNCalculator(int capacity = DefaultCapacity) {
         _stack = new(capacity);
+        _last = new(LastCapacity);
     }
 
     internal RPNCalculator(IEnumerable<StackEntry<T>> values, int capacity = DefaultCapacity) {
@@ -19,6 +22,7 @@ public class RPNCalculator<T> : IRPNCalculator
         foreach (var value in values) {
             _stack.PushFront(value);
         }
+        _last = new(LastCapacity);
     }
 
     public int WordBytes => T.Zero.GetByteCount();
@@ -47,6 +51,7 @@ public class RPNCalculator<T> : IRPNCalculator
 
     public void Clear() {
         _stack.Clear();
+        _last.Clear();
     }
 
     int GetShiftAmount(T bits) {
@@ -242,6 +247,9 @@ public class RPNCalculator<T> : IRPNCalculator
             Comment = a.Comment,
             AltComment = b.Comment,
         });
+        _last.Clear();
+        _last.PushFront(a);
+        _last.PushFront(b);
         return flags;
     }
 
@@ -283,6 +291,8 @@ public class RPNCalculator<T> : IRPNCalculator
             Comment = val.Comment,
             AltComment = val.AltComment,
         });
+        _last.Clear();
+        _last.PushFront(val);
     }
 
     void Drop(int count) {
@@ -396,6 +406,17 @@ public class RPNCalculator<T> : IRPNCalculator
 
     public IEnumerable<IStackEntry> GetStackItems(int max = int.MaxValue) {
         return _stack.EnumerateLifo(max).Cast<IStackEntry>();
+    }
+
+    public IStackEntry? Last(int index) {
+        if (index < _last.Count)
+            return _last[index];
+        else
+            return null;
+    }
+
+    public int LastDepth() {
+        return _last.Count;
     }
 
     public RPNCalculator<U> Into<U>(bool signExtend = false)
