@@ -14,6 +14,7 @@ class ProgramConfig {
     public bool FakeNumpad;
     public bool ShowHints;
     public bool InputUsesCurrentBase;
+    public bool AutoDismissErrors;
 
     public static ProgramConfig CreateDefault() => new() {
         Format = IntegerFormat.Decimal,
@@ -27,6 +28,7 @@ class ProgramConfig {
         FakeNumpad = false,
         ShowHints = false,
         InputUsesCurrentBase = true,
+        AutoDismissErrors = false,
     };
 
     public static string CommandLineHelp => """
@@ -42,6 +44,7 @@ class ProgramConfig {
         -[no]numpad             Enable fake numpad
         -[no]hints              Show status hints
         -[no]inputbase          Input uses current base
+        -[no]autodismisserrors  Auto-dismiss errors
         -?                      Show this message
         """;
 
@@ -133,6 +136,13 @@ class ProgramConfig {
             }
             else if ("-noinputbase".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.InputUsesCurrentBase = false;
+            }
+
+            else if ("-autodismisserrors".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                config.AutoDismissErrors = true;
+            }
+            else if ("-noautodismisserrors".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+                config.AutoDismissErrors = false;
             }
 
             else if ("-?".Equals(arg, StringComparison.OrdinalIgnoreCase)) {

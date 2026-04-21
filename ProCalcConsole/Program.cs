@@ -19,6 +19,12 @@ class Program {
 
     readonly ClipboardManager _clipboard = new();
 
+    readonly System.Timers.Timer _timer = new() {
+        Enabled = false,
+        AutoReset = false,
+        Interval = 1000,
+    };
+
     Program(ProgramConfig config) {
         _config = config;
 
@@ -66,6 +72,7 @@ class Program {
             }
         }
         try {
+            _timer.Elapsed += (o, e) => Refresh(RefreshFlags.Input);
             _calc.Push(0, null, null);
             Refresh(RefreshFlags.Screen);
             while (!_exit) {
@@ -79,6 +86,7 @@ class Program {
                         break;
                 }
             }
+            _timer.Stop();
 
             return 0;
         }
@@ -936,12 +944,15 @@ class Program {
                     ConsoleEx.Write("");
             }
 
+            _timer.Stop();
             if (flags.HasFlag(RefreshFlags.Input)) {
                 Console.SetCursorPosition(0, height - 1);
                 if (ex != null) {
                     _ilm = InputLineMode.Exception;
                     ConsoleEx.Write(ex.Message, width: width - 1);
                     Console.Beep();
+                    if (_config.AutoDismissErrors)
+                        _timer.Start();
                 }
                 else {
                     _ilm = InputLineMode.Normal;

@@ -63,6 +63,11 @@ class ConfigPage {
             Getter = pc => pc.ShowHints ? "x" : " ",
             Toggle = pc => pc.ShowHints = !pc.ShowHints,
         },
+        new() {
+            Name = "Auto-dismiss errors",
+            Getter = pc => pc.AutoDismissErrors ? "x" : " ",
+            Toggle = pc => pc.AutoDismissErrors = !pc.AutoDismissErrors,
+        },
     ];
 
     public ConfigPage(ProgramConfig config) {
