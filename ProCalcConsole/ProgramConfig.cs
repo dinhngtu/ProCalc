@@ -34,14 +34,14 @@ class ProgramConfig {
         
         -hex/-dec/-oct/-bin     Set display format
         -type <type>            Set type (e.g. s32, u64)
-        -group/-nogroup         Set digit grouping
+        -[no]group              Set digit grouping
         -padding <padding>      Set padding mode
         -upper/-lower           Set hexadecimal case
-        -index/-noindex         Show stack index
-        -base/-nobase           Show stack base
-        -numpad/-nonumpad       Enable fake numpad
-        -hints/-nohints         Show status hints
-        -inputbase/-noinputbase Input uses current base
+        -[no]index              Show stack index
+        -[no]base               Show stack base
+        -[no]numpad             Enable fake numpad
+        -[no]hints              Show status hints
+        -[no]inputbase          Input uses current base
         -?                      Show this message
         """;
 
