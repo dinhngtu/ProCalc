@@ -7,7 +7,7 @@ using Windows.Win32.System.Ole;
 
 namespace ProCalcConsole;
 
-[SupportedOSPlatform("windows10.0")]
+[SupportedOSPlatform("windows5.1.2600")]
 class WindowsClipboard : IClipboard {
     bool clipboardOpened;
 

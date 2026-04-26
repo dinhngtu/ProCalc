@@ -8,15 +8,12 @@ using Windows.Win32.UI.WindowsAndMessaging;
 namespace ProCalcConsole;
 
 class ClipboardManager : IDisposable {
-    [SupportedOSPlatformGuard("windows10.0")]
-    readonly bool _guard;
     HWND _hwnd = HWND.Null;
 
     const string WindowClassName = "{4F17CD5A-051C-4F51-98FC-2D8548CBCCED}";
 
     public ClipboardManager() {
-        _guard = OperatingSystem.IsWindowsVersionAtLeast(10, 0);
-        if (!_guard)
+        if (!PlatformGuards.IsWindowsXP)
             return;
         unsafe {
             fixed (char* pClassName = WindowClassName) {
@@ -54,7 +51,7 @@ class ClipboardManager : IDisposable {
         }
     }
 
-    [SupportedOSPlatform("windows10.0")]
+    [SupportedOSPlatform("windows5.0")]
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
     static LRESULT WndProc(HWND hWnd, uint uMsg, WPARAM wParam, LPARAM lParam) {
         switch (uMsg) {
@@ -66,7 +63,7 @@ class ClipboardManager : IDisposable {
     }
 
     public IClipboard? Open() {
-        if (!_guard)
+        if (!PlatformGuards.IsWindowsXP)
             return null;
         return new WindowsClipboard(_hwnd);
     }
@@ -82,7 +79,7 @@ class ClipboardManager : IDisposable {
 
             // free unmanaged resources (unmanaged objects) and override finalizer
             // set large fields to null
-            if (_guard && _hwnd != HWND.Null) {
+            if (PlatformGuards.IsWindowsXP && _hwnd != HWND.Null) {
                 PInvoke.DestroyWindow(_hwnd);
                 _hwnd = HWND.Null;
             }
