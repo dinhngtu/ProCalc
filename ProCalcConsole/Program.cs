@@ -2,6 +2,8 @@ using ProCalcConsole;
 using ProCalcCore;
 using System.Globalization;
 using System.Text;
+using Windows.Win32;
+using Windows.Win32.System.LibraryLoader;
 
 class Program {
     IRPNCalculator _calc;
@@ -40,6 +42,10 @@ class Program {
 
     [STAThread]
     static int Main(string[] args) {
+        if (PlatformGuards.IsWindows8) {
+            PInvoke.SetDefaultDllDirectories(LOAD_LIBRARY_FLAGS.LOAD_LIBRARY_SEARCH_SYSTEM32);
+        }
+
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
