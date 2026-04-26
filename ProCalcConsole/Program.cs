@@ -62,7 +62,7 @@ class Program {
 
     int Run() {
         uint oldIm = 0, oldOm = 0;
-        if (ConsoleEx.IsWindows) {
+        if (PlatformGuards.IsWindows) {
             try {
                 (oldIm, oldOm) = WindowsConsole.EnableTuiMode();
             }
@@ -91,7 +91,7 @@ class Program {
             return 0;
         }
         finally {
-            if (ConsoleEx.IsWindows)
+            if (PlatformGuards.IsWindows)
                 WindowsConsole.RestoreMode(oldIm, oldOm);
         }
     }

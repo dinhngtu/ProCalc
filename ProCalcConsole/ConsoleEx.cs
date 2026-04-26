@@ -1,16 +1,10 @@
-using System.Runtime.Versioning;
 using System.Text;
 
 namespace ProCalcConsole;
 
 static class ConsoleEx {
-    static readonly bool _isWindows = OperatingSystem.IsWindows();
-
-    [SupportedOSPlatformGuard("windows")]
-    public static bool IsWindows => _isWindows;
-
     public static object ReadConsoleInput() {
-        if (IsWindows)
+        if (PlatformGuards.IsWindows)
             return WindowsConsole.ReadConsoleInput();
         else
             return Console.ReadKey(true);

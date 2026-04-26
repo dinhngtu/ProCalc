@@ -81,7 +81,7 @@ class ConfigPage {
 
     public void Run() {
         bool previous = true;
-        if (ConsoleEx.IsWindows)
+        if (PlatformGuards.IsWindows)
             previous = Console.CursorVisible;
         try {
             Console.CursorVisible = false;
@@ -100,7 +100,7 @@ class ConfigPage {
             }
         }
         finally {
-            if (ConsoleEx.IsWindows)
+            if (PlatformGuards.IsWindows)
                 Console.CursorVisible = previous;
             else
                 Console.CursorVisible = true;
