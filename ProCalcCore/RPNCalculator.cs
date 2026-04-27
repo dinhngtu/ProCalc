@@ -248,8 +248,8 @@ public class RPNCalculator<T> : IRPNCalculator
             AltComment = b.Comment,
         });
         _last.Clear();
-        _last.PushFront(a);
         _last.PushFront(b);
+        _last.PushFront(a);
         return flags;
     }
 
