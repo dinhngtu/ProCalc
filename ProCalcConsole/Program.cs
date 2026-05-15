@@ -609,7 +609,7 @@ class Program {
                     null);
                 break;
 
-            case ConsoleKey.R when key.Modifiers == ConsoleModifiers.Control:
+            case ConsoleKey.R when key.Modifiers == ConsoleModifiers.Shift:
                 if (_input.Length != 0)
                     throw new InvalidOperationException("Still editing");
 
