@@ -273,6 +273,7 @@ class Program {
                 refresh = RefreshFlags.Stack | RefreshFlags.Input;
                 break;
             case ConsoleKey.D when key.Modifiers == ConsoleModifiers.Control:
+            case ConsoleKey.F4 when key.Modifiers == ConsoleModifiers.Alt:
                 _exit = true;
                 break;
             case ConsoleKey.L when key.Modifiers == ConsoleModifiers.Control:
