@@ -16,7 +16,15 @@ class DisplayPage2(ProgramConfig config, object value) {
 
         while (text.Length > width) {
             var searchLength = Math.Min(width + separator.Length, text.Length);
-            var breakIndex = text[..searchLength].LastIndexOf(separator);
+            var separatorIndex = text[..searchLength].LastIndexOf(separator);
+            var breakIndex = separatorIndex;
+            var nextIndex = separatorIndex + separator.Length;
+
+            var dashIndex = text[..Math.Min(width, text.Length)].LastIndexOf('-');
+            if (dashIndex >= 0 && dashIndex + 1 > breakIndex) {
+                breakIndex = dashIndex + 1;
+                nextIndex = breakIndex;
+            }
 
             if (breakIndex <= 0) {
                 ConsoleEx.Write(text[..width]);
@@ -25,7 +33,7 @@ class DisplayPage2(ProgramConfig config, object value) {
             }
 
             ConsoleEx.Write(text[..breakIndex]);
-            text = text[(breakIndex + separator.Length)..];
+            text = text[nextIndex..];
         }
 
         if (text.Length > 0)
@@ -40,20 +48,38 @@ class DisplayPage2(ProgramConfig config, object value) {
         ConsoleEx.Write("DISPLAY 2");
         ConsoleEx.Write("=========");
 
-        bool first = true;
-        for (int i = 127; i >= 0; i--) {
-            var pos = UInt128.One << i;
-            if ((bin & pos) != UInt128.Zero) {
-                if (!first) {
-                    sb.Append(" ; ");
+        bool foundBits = false;
+        int first = -1, last = -1;
+        var num = new StringBuilder();
+        for (int i = 127; i >= -1; i--) {
+            if (i >= 0 && (bin & (UInt128.One << i)) != UInt128.Zero) {
+                if (first < 0) {
+                    first = i;
                 }
-                var num = new StringBuilder();
-                Numerics.FormatValueRaw(num, unchecked((Int128)pos), IntegerFormat.Hexadecimal, false, 4, PaddingMode.None, config.Upper);
-                sb.Append(num);
-                first = false;
+                last = i;
+            } else {
+                if (last >= 0) {
+                    if (foundBits) {
+                        sb.Append(" ; ");
+                    }
+
+                    num.Clear();
+                    Numerics.FormatValueRaw(num, Int128.One << first, IntegerFormat.Hexadecimal, false, 4, PaddingMode.None, config.Upper);
+                    sb.AppendFormat("{0}({1})", num, first);
+
+                    if (last != first) {
+                        sb.Append('-');
+                        num.Clear();
+                        Numerics.FormatValueRaw(num, Int128.One << last, IntegerFormat.Hexadecimal, false, 4, PaddingMode.None, config.Upper);
+                        sb.AppendFormat("{0}({1})", num, last);
+                    }
+
+                    foundBits = true;
+                }
+                first = last = -1;
             }
         }
-        if (!first) {
+        if (foundBits) {
             ConsoleEx.Write("");
             ConsoleEx.Write("Bits:");
             WriteWrappedAtSeparator(sb.ToString(), Console.WindowWidth);
