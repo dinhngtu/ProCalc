@@ -121,7 +121,20 @@ static class WindowsConsole {
                 }
 
                 if (ir.EventType == PInvoke.WINDOW_BUFFER_SIZE_EVENT) {
-                    return new ConsoleResizeInfo(ir.Event.WindowBufferSizeEvent.dwSize.X, ir.Event.WindowBufferSizeEvent.dwSize.Y);
+                    return new ConsoleResizeInfo(
+                        ir.Event.WindowBufferSizeEvent.dwSize.X,
+                        ir.Event.WindowBufferSizeEvent.dwSize.Y);
+                } else if (ir.EventType == PInvoke.MOUSE_EVENT) {
+                    switch (ir.Event.MouseEvent.dwEventFlags) {
+                        case 0:
+                            return new ConsoleMouseClickInfo(
+                                ir.Event.MouseEvent.dwMousePosition.X,
+                                ir.Event.MouseEvent.dwMousePosition.Y,
+                                ir.Event.MouseEvent.dwButtonState,
+                                ir.Event.MouseEvent.dwControlKeyState);
+                        default:
+                            continue;
+                    }
                 } else if (!IsReadKeyEvent(ref ir)) {
                     continue;
                 }
@@ -139,7 +152,12 @@ static class WindowsConsole {
         bool alt = (state & (PInvoke.LEFT_ALT_PRESSED | PInvoke.RIGHT_ALT_PRESSED)) != 0;
         bool control = (state & (PInvoke.LEFT_CTRL_PRESSED | PInvoke.RIGHT_CTRL_PRESSED)) != 0;
 
-        ConsoleKeyInfo info = new(ir.Event.KeyEvent.uChar.UnicodeChar, (ConsoleKey)ir.Event.KeyEvent.wVirtualKeyCode, shift, alt, control);
+        ConsoleKeyInfo info = new(
+            ir.Event.KeyEvent.uChar.UnicodeChar,
+            (ConsoleKey)ir.Event.KeyEvent.wVirtualKeyCode,
+            shift,
+            alt,
+            control);
 
         return info;
     }
@@ -158,7 +176,9 @@ static class WindowsConsole {
 
     public static (uint, uint) EnableTuiMode() {
         var oldIm = SetConsoleMode(InputHandle, mode =>
-            (uint)CONSOLE_MODE.ENABLE_WINDOW_INPUT);
+            (uint)CONSOLE_MODE.ENABLE_WINDOW_INPUT |
+            (uint)CONSOLE_MODE.ENABLE_MOUSE_INPUT |
+            (uint)CONSOLE_MODE.ENABLE_EXTENDED_FLAGS);
         var oldOm = SetConsoleMode(OutputHandle, mode =>
             (uint)CONSOLE_MODE.ENABLE_PROCESSED_OUTPUT |
             (uint)CONSOLE_MODE.ENABLE_WRAP_AT_EOL_OUTPUT |
