@@ -11,13 +11,14 @@ readonly struct ConsoleMouseClickInfo(short x, short y, uint buttons, uint ctrl)
     public int X => x;
     public int Y => y;
     public bool IsButtonPressed(int buttonIndex) {
-        ArgumentOutOfRangeException.ThrowIfNegative(buttonIndex);
+        if (buttonIndex < 0) {
+            buttonIndex = 32 + buttonIndex;
+        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(buttonIndex, -32);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(buttonIndex, 32);
         return buttonIndex switch {
             0 => (buttons & (1 << 0)) != 0,
             31 => (buttons & (1 << 1)) != 0,
-            1 => (buttons & (1 << 2)) != 0,
-            2 => (buttons & (1 << 3)) != 0,
             int i => (buttons & (1 << (i + 1))) != 0,
         };
     }

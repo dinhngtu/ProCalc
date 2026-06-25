@@ -65,12 +65,18 @@ class DisplayPage2(ProgramConfig config, object value) {
 
                     num.Clear();
                     Numerics.FormatValueRaw(num, Int128.One << first, IntegerFormat.Hexadecimal, false, 4, PaddingMode.None, config.Upper);
+                    if (config.ShowStackBase) {
+                        sb.Append("0x");
+                    }
                     sb.AppendFormat("{0}({1})", num, first);
 
                     if (last != first) {
                         sb.Append('-');
                         num.Clear();
                         Numerics.FormatValueRaw(num, Int128.One << last, IntegerFormat.Hexadecimal, false, 4, PaddingMode.None, config.Upper);
+                        if (config.ShowStackBase) {
+                            sb.Append("0x");
+                        }
                         sb.AppendFormat("{0}({1})", num, last);
                     }
 

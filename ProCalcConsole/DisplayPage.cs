@@ -8,6 +8,7 @@ class DisplayPage {
     readonly object _initialValue;
     readonly Dictionary<(int Row, int Col), int> _bitCells = [];
     object _value;
+    int? _clicked = null;
     bool _exit = false;
 
     public DisplayPage(ProgramConfig config, object initialValue) {
@@ -21,7 +22,9 @@ class DisplayPage {
     void FormatBinaryFancyRow(StringBuilder sb, UInt128 val, int startBit, int count, int row) {
         var col = 0;
         for (int i = count - 1; i >= 0; i--) {
-            _bitCells[(row, col)] = startBit + i;
+            if (row >= 0) {
+                _bitCells[(row, col)] = startBit + i;
+            }
             sb.Append(((val >> (startBit + i)) & 1) != 0 ? '1' : '0');
             col++;
             sb.Append(' ');
@@ -152,6 +155,24 @@ class DisplayPage {
         FormatBinaryFancy(sb, _value, CalculatorMath.ByteCount(_value), Console.CursorTop);
         foreach (var line in sb.ToString().Split('\n'))
             ConsoleEx.Write(line);
+
+        if (_clicked is int clicked) {
+            ConsoleEx.Write("");
+            ConsoleEx.Write("Clicked bit value:");
+            sb.Clear();
+            Numerics.FormatValueRaw(
+                sb,
+                Int128.One << clicked,
+                IntegerFormat.Hexadecimal,
+                false,
+                4,
+                _config.PaddingMode,
+                _config.Upper);
+            if (_config.ShowStackBase) {
+                sb.Insert(0, "0x");
+            }
+            ConsoleEx.Write(sb.ToString());
+        }
     }
 
     public void Run() {
@@ -197,12 +218,16 @@ class DisplayPage {
     }
 
     void HandleClick(ConsoleMouseClickInfo click) {
-        if (!click.IsButtonPressed(0) || click.Modifiers != ConsoleModifiers.None)
+        if (click.Modifiers != ConsoleModifiers.None)
             return;
 
         if (_bitCells.TryGetValue((click.Y, click.X), out var bit)) {
-            _value = ToggleBit(_value, bit);
-            Refresh();
+            if (click.IsButtonPressed(0))
+                _value = ToggleBit(_value, bit);
+            if (click.IsButtonPressed(0) || click.IsButtonPressed(-1)) {
+                _clicked = bit;
+                Refresh();
+            }
         }
     }
 }
