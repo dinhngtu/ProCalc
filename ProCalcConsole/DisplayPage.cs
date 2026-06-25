@@ -3,7 +3,9 @@ using System.Text;
 
 namespace ProCalcConsole;
 
-class DisplayPage(ProgramConfig config) {
+class DisplayPage(ProgramConfig config, object value) {
+    bool _exit = false;
+
     void FormatBinaryFancyRow(StringBuilder sb, UInt128 val, int startBit, int count) {
         for (int i = count - 1; i >= 0; i--) {
             sb.Append(((val >> (startBit + i)) & 1) != 0 ? '1' : '0');
@@ -44,11 +46,14 @@ class DisplayPage(ProgramConfig config) {
         }
     }
 
-    public void Run(object value) {
+    void Refresh() {
         var sb = new StringBuilder(1024);
 
         Console.Clear();
+        ConsoleEx.Write("DISPLAY");
+        ConsoleEx.Write("=======");
 
+        ConsoleEx.Write("");
         ConsoleEx.Write("Hex:");
         sb.Clear();
         Numerics.FormatValueRaw(
@@ -104,33 +109,31 @@ class DisplayPage(ProgramConfig config) {
         FormatBinaryFancy(sb, value, CalculatorMath.ByteCount(value));
         foreach (var line in sb.ToString().Split('\n'))
             ConsoleEx.Write(line);
+    }
 
-        switch (value) {
-            case long v: {
-                    ConsoleEx.Write("");
-                    double f = BitConverter.Int64BitsToDouble(v);
-                    ConsoleEx.Write("Double:");
-                    ConsoleEx.Write(f.ToString(config.Upper ? "R" : "r"));
+    public void Run() {
+        Refresh();
+        while (!_exit) {
+            var cin = ConsoleEx.ReadConsoleInput();
+            switch (cin) {
+                case ConsoleKeyInfo key:
+                    HandleKey(key);
                     break;
-                }
-            case int v: {
-                    ConsoleEx.Write("");
-                    float f = BitConverter.Int32BitsToSingle(v);
-                    ConsoleEx.Write("Single:");
-                    ConsoleEx.Write(f.ToString(config.Upper ? "R" : "r"));
+                case ConsoleResizeInfo:
+                    Refresh();
                     break;
-                }
-            case short v: {
-                    ConsoleEx.Write("");
-                    Half f = BitConverter.Int16BitsToHalf(v);
-                    ConsoleEx.Write("Half:");
-                    ConsoleEx.Write(f.ToString(config.Upper ? "R" : "r"));
-                    break;
-                }
-            default:
-                break;
+            }
         }
+    }
 
-        ConsoleEx.Pause();
+    void HandleKey(ConsoleKeyInfo key) {
+        try {
+            if (key.Key == ConsoleKey.P && key.Modifiers == ConsoleModifiers.None) {
+                new DisplayPage2(config, value).Run();
+            }
+        }
+        catch {
+        }
+        _exit = true;
     }
 }
