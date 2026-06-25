@@ -453,7 +453,13 @@ class Program {
                 break;
             case ConsoleKey.P when key.Modifiers == ConsoleModifiers.None:
                 refresh = RefreshFlags.Screen;
-                new DisplayPage(_config, _calc.Peek().Object).Run();
+                var displayEntry = _calc.Peek();
+                var displayPage = new DisplayPage(_config, displayEntry.Object);
+                displayPage.Run();
+                if (!displayPage.Value.Equals(displayEntry.Object)) {
+                    _calc.DoStackOp(StackOperation.Drop, 1);
+                    _calc.Push(displayPage.Value, displayEntry.Comment, displayEntry.AltComment);
+                }
                 break;
             case ConsoleKey.Q when key.Modifiers == ConsoleModifiers.None:
             case ConsoleKey.W when key.Modifiers == ConsoleModifiers.None:
