@@ -64,8 +64,7 @@ static class Numerics {
 
         if (format == IntegerFormat.Octal) {
             FormatOctalRaw(sb, value, paddingMode, CalculatorMath.ByteCount(value));
-        }
-        else {
+        } else {
             var size = GetPadSize(paddingMode, CalculatorMath.ByteCount(value));
 
             if (!signed)

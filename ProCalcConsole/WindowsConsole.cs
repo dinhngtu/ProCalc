@@ -26,8 +26,7 @@ static class WindowsConsole {
             // which is either the result of an Alt+Numpad key sequence, an IME-generated char,
             // or a pasted char without a matching key.
             return ir.Event.KeyEvent.wVirtualKeyCode == (ushort)VIRTUAL_KEY.VK_MENU && ir.Event.KeyEvent.uChar.UnicodeChar != 0;
-        }
-        else {
+        } else {
             // Keydown event. Some of these we need to skip as well.
             ushort keyCode = ir.Event.KeyEvent.wVirtualKeyCode;
             if (keyCode is >= 0x10 and <= 0x12) {
@@ -87,8 +86,7 @@ static class WindowsConsole {
             // We will return one key from this method, so we decrement the
             // repeatCount here, leaving the cachedInputRecord in the "queue".
 
-        }
-        else { // We did NOT have a previous keystroke with repeated characters:
+        } else { // We did NOT have a previous keystroke with repeated characters:
 
             while (true) {
                 unsafe {
@@ -124,8 +122,7 @@ static class WindowsConsole {
 
                 if (ir.EventType == PInvoke.WINDOW_BUFFER_SIZE_EVENT) {
                     return new ConsoleResizeInfo(ir.Event.WindowBufferSizeEvent.dwSize.X, ir.Event.WindowBufferSizeEvent.dwSize.Y);
-                }
-                else if (!IsReadKeyEvent(ref ir)) {
+                } else if (!IsReadKeyEvent(ref ir)) {
                     continue;
                 }
 

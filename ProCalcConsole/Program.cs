@@ -55,8 +55,7 @@ class Program {
                 Console.WriteLine(ProgramConfig.CommandLineHelp);
                 return 0;
             }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             Console.WriteLine(ex.Message);
             Console.WriteLine(ProgramConfig.CommandLineHelp);
             return 1;
@@ -71,8 +70,7 @@ class Program {
         if (PlatformGuards.IsWindows) {
             try {
                 (oldIm, oldOm) = WindowsConsole.EnableTuiMode();
-            }
-            catch {
+            } catch {
                 Console.WriteLine("Not a terminal");
                 return 1;
             }
@@ -95,8 +93,7 @@ class Program {
             _timer.Stop();
 
             return 0;
-        }
-        finally {
+        } finally {
             if (PlatformGuards.IsWindows)
                 WindowsConsole.RestoreMode(oldIm, oldOm);
         }
@@ -115,8 +112,7 @@ class Program {
                 HandleInputKeys(key, out refresh) ||
                 HandleInputKeys2(key, out refresh)) {
                 Refresh(refresh);
-            }
-            else {
+            } else {
                 throw new NotSupportedException(string.Format(
                     "Unknown key: {0}{1}{2}{3}",
                     key.Modifiers.HasFlag(ConsoleModifiers.Control) ? "Ctrl+" : "",
@@ -124,8 +120,7 @@ class Program {
                     key.Modifiers.HasFlag(ConsoleModifiers.Shift) ? "Shift+" : "",
                     key.Key.ToString()));
             }
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             Refresh(RefreshFlags.Screen, ex);
         }
     }
@@ -188,16 +183,13 @@ class Program {
                     if (_config.Type == InputTypes.Int16) {
                         _config.Type = InputTypes.Int8;
                         _calc = _calc.ConvertTo(typeof(sbyte), false);
-                    }
-                    else if (_config.Type == InputTypes.Int32) {
+                    } else if (_config.Type == InputTypes.Int32) {
                         _config.Type = InputTypes.Int16;
                         _calc = _calc.ConvertTo(typeof(short), false);
-                    }
-                    else if (_config.Type == InputTypes.Int64) {
+                    } else if (_config.Type == InputTypes.Int64) {
                         _config.Type = InputTypes.Int32;
                         _calc = _calc.ConvertTo(typeof(int), false);
-                    }
-                    else if (_config.Type == InputTypes.Int128) {
+                    } else if (_config.Type == InputTypes.Int128) {
                         _config.Type = InputTypes.Int64;
                         _calc = _calc.ConvertTo(typeof(long), false);
                     }
@@ -210,16 +202,13 @@ class Program {
                     if (_config.Type == InputTypes.Int8) {
                         _config.Type = InputTypes.Int16;
                         _calc = _calc.ConvertTo(typeof(short), signed);
-                    }
-                    else if (_config.Type == InputTypes.Int16) {
+                    } else if (_config.Type == InputTypes.Int16) {
                         _config.Type = InputTypes.Int32;
                         _calc = _calc.ConvertTo(typeof(int), signed);
-                    }
-                    else if (_config.Type == InputTypes.Int32) {
+                    } else if (_config.Type == InputTypes.Int32) {
                         _config.Type = InputTypes.Int64;
                         _calc = _calc.ConvertTo(typeof(long), signed);
-                    }
-                    else if (_config.Type == InputTypes.Int64) {
+                    } else if (_config.Type == InputTypes.Int64) {
                         _config.Type = InputTypes.Int128;
                         _calc = _calc.ConvertTo(typeof(Int128), signed);
                     }
@@ -346,13 +335,11 @@ class Program {
             case ConsoleKey.Oem7 when key.Modifiers == ConsoleModifiers.Shift:
                 if (_input.Length == 0) {
                     _calc.DoStackOp(StackOperation.SwapComment, 1);
-                }
-                else {
+                } else {
                     PushInput(true);
                     try {
                         _calc.DoStackOp(StackOperation.SwapComment, null);
-                    }
-                    catch {
+                    } catch {
                         _calc.DoStackOp(StackOperation.Drop, 1);
                         throw;
                     }
@@ -401,8 +388,7 @@ class Program {
                             _input.Append(';');
                             _input.Append(entry.Comment);
                         }
-                    }
-                    catch {
+                    } catch {
                         _calc.Push(entry);
                         throw;
                     }
@@ -412,13 +398,11 @@ class Program {
             case ConsoleKey.Delete when key.Modifiers == ConsoleModifiers.Shift:
                 if (_input.Length == 0) {
                     _calc.DoStackOp(StackOperation.Drop, 1);
-                }
-                else {
+                } else {
                     PushInput(true);
                     try {
                         _calc.DoStackOp(StackOperation.Drop, null);
-                    }
-                    catch {
+                    } catch {
                         _calc.DoStackOp(StackOperation.Drop, 1);
                         throw;
                     }
@@ -431,13 +415,11 @@ class Program {
             case ConsoleKey.Z when key.Modifiers == ConsoleModifiers.None:
                 if (_input.Length == 0) {
                     _calc.DoStackOp(StackOperation.Extract, 2);
-                }
-                else {
+                } else {
                     PushInput(true);
                     try {
                         _calc.DoStackOp(StackOperation.Extract, null);
-                    }
-                    catch {
+                    } catch {
                         _calc.DoStackOp(StackOperation.Drop, 1);
                         throw;
                     }
@@ -446,13 +428,11 @@ class Program {
             case ConsoleKey.S when key.Modifiers == ConsoleModifiers.None:
                 if (_input.Length == 0) {
                     _calc.DoStackOp(StackOperation.Swap, 2);
-                }
-                else {
+                } else {
                     PushInput(true);
                     try {
                         _calc.DoStackOp(StackOperation.Swap, null);
-                    }
-                    catch {
+                    } catch {
                         _calc.DoStackOp(StackOperation.Drop, 1);
                         throw;
                     }
@@ -461,13 +441,11 @@ class Program {
             case ConsoleKey.Enter when key.Modifiers == ConsoleModifiers.Shift:
                 if (_input.Length == 0) {
                     _calc.DoStackOp(StackOperation.Pick, 1);
-                }
-                else {
+                } else {
                     PushInput(true);
                     try {
                         _calc.DoStackOp(StackOperation.Pick, null);
-                    }
-                    catch {
+                    } catch {
                         _calc.DoStackOp(StackOperation.Drop, 1);
                         throw;
                     }
@@ -801,15 +779,13 @@ class Program {
             if (commentChar == ':') {
                 try {
                     _calc.DoStackOp(StackOperation.SetComment, null);
-                }
-                catch {
+                } catch {
                     _calc.DoStackOp(StackOperation.Drop, 1);
                     throw;
                 }
             }
             ResetInput();
-        }
-        catch {
+        } catch {
             _input.Clear();
             _input.Append(original);
             _inputCursor = _input.Length;
@@ -989,17 +965,14 @@ class Program {
                     Console.Beep();
                     if (_config.AutoDismissErrors)
                         _timer.Start();
-                }
-                else {
+                } else {
                     _ilm = InputLineMode.Normal;
                     PrintInputLine();
                 }
-            }
-            else {
+            } else {
                 Console.SetCursorPosition(inputCol, height - 1);
             }
-        }
-        finally {
+        } finally {
             Console.CursorVisible = true;
         }
     }

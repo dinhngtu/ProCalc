@@ -98,8 +98,7 @@ class ConfigPage {
                         break;
                 }
             }
-        }
-        finally {
+        } finally {
             if (PlatformGuards.IsWindows)
                 Console.CursorVisible = previous;
             else
@@ -141,8 +140,7 @@ class ConfigPage {
                         key.Key.ToString()));
             }
             Refresh();
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             Refresh(ex);
         }
     }
@@ -156,8 +154,7 @@ class ConfigPage {
                 (Console.ForegroundColor, Console.BackgroundColor) = (bg, fg);
             try {
                 ConsoleEx.Write(string.Format("{0,-8} {1}", $"[{Settings[i].Getter(Config)}]", Settings[i].Name));
-            }
-            finally {
+            } finally {
                 if (i == _active)
                     (Console.ForegroundColor, Console.BackgroundColor) = (fg, bg);
             }

@@ -35,7 +35,7 @@ class ProgramConfig {
 
     public static string CommandLineHelp => """
         Command line parameters:
-        
+
         -hex/-dec/-oct/-bin     Set display format
         -type <type>            Set type (e.g. s32, u64)
         -[no]group              Set digit grouping
@@ -59,18 +59,13 @@ class ProgramConfig {
 
             if ("-hex".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.Format = IntegerFormat.Hexadecimal;
-            }
-            else if ("-dec".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-dec".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.Format = IntegerFormat.Decimal;
-            }
-            else if ("-oct".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-oct".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.Format = IntegerFormat.Octal;
-            }
-            else if ("-bin".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-bin".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.Format = IntegerFormat.Binary;
-            }
-
-            else if ("-type".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-type".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 var typeName = args[++i];
                 var typeSize = typeName[1..] switch {
                     "8" => InputTypes.Int8,
@@ -86,80 +81,47 @@ class ProgramConfig {
                     _ => throw new ArgumentException($"Invalid -type argument {typeName}"),
                 };
                 config.Type = typeSize;
-            }
-
-            else if ("-group".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-group".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.Grouping = true;
-            }
-            else if ("-nogroup".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-nogroup".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.Grouping = false;
-            }
-
-            else if ("-padding".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-padding".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.PaddingMode = Enum.Parse<PaddingMode>(args[++i], ignoreCase: true);
-            }
-
-            else if ("-upper".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-upper".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.Upper = true;
-            }
-            else if ("-lower".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-lower".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.Upper = false;
-            }
-
-            else if ("-index".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-index".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.ShowStackIndex = true;
-            }
-            else if ("-noindex".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-noindex".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.ShowStackIndex = false;
-            }
-
-            else if ("-base".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-base".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.ShowStackBase = true;
-            }
-            else if ("-nobase".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-nobase".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.ShowStackBase = false;
-            }
-
-            else if ("-numpad".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-numpad".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.FakeNumpad = true;
-            }
-            else if ("-nonumpad".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-nonumpad".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.FakeNumpad = false;
-            }
-
-            else if ("-hints".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-hints".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.ShowHints = true;
-            }
-            else if ("-nohints".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-nohints".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.ShowHints = false;
-            }
-
-            else if ("-inputbase".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-inputbase".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.InputUsesCurrentBase = true;
-            }
-            else if ("-noinputbase".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-noinputbase".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.InputUsesCurrentBase = false;
-            }
-
-            else if ("-autodismisserrors".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-autodismisserrors".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.AutoDismissErrors = true;
-            }
-            else if ("-noautodismisserrors".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-noautodismisserrors".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.AutoDismissErrors = false;
-            }
-
-            else if ("-showlaststack".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-showlaststack".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.ShowLastStack = true;
-            }
-            else if ("-noshowlaststack".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-noshowlaststack".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 config.ShowLastStack = false;
-            }
-
-            else if ("-?".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
+            } else if ("-?".Equals(arg, StringComparison.OrdinalIgnoreCase)) {
                 return false;
-            }
-
-            else {
+            } else {
                 throw new ArgumentException($"Invalid argument {arg}");
             }
         }

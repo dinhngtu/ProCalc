@@ -131,8 +131,7 @@ class DisplayPage(ProgramConfig config, object value) {
             if (key.Key == ConsoleKey.P && key.Modifiers == ConsoleModifiers.None) {
                 new DisplayPage2(config, value).Run();
             }
-        }
-        catch {
+        } catch {
         }
         _exit = true;
     }

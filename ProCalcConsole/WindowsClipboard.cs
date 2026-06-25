@@ -38,16 +38,13 @@ class WindowsClipboard : IClipboard {
                 var size = PInvoke.GlobalSize(handle);
                 if (size == 0) {
                     Marshal.ThrowExceptionForHR(Marshal.GetHRForLastWin32Error());
-                }
-                else if (size < sizeof(char)) {
+                } else if (size < sizeof(char)) {
                     return null;
-                }
-                else if (size > (ulong)int.MaxValue) {
+                } else if (size > (ulong)int.MaxValue) {
                     throw new InvalidDataException();
                 }
                 return Marshal.PtrToStringUni((nint)ptr, (int)(size / sizeof(char) - 1));
-            }
-            finally {
+            } finally {
                 PInvoke.GlobalUnlock(handle);
             }
         }
@@ -101,8 +98,7 @@ class WindowsClipboard : IClipboard {
                 ptr = null;
                 PInvoke.GlobalUnlock(handle);
                 handle = HGLOBAL.Null;
-            }
-            finally {
+            } finally {
                 if (ptr != null && handle != HGLOBAL.Null) {
                     PInvoke.GlobalUnlock(handle);
                 }

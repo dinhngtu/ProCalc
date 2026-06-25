@@ -26,8 +26,7 @@ static class ConsoleEx {
         if (display.Length > width) {
             display.Remove(width - 1, display.Length - width + 1);
             display.Append('>');
-        }
-        else {
+        } else {
             display.Append(' ', width - display.Length);
         }
         Console.Write(display.ToString());

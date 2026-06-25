@@ -117,8 +117,7 @@ public class RPNCalculator<T> : IRPNCalculator
                         flags = ResultFlags.Carry;
                     try {
                         result = checked(a.Value * b.Value);
-                    }
-                    catch (OverflowException) {
+                    } catch (OverflowException) {
                         flags |= ResultFlags.Overflow;
                         result = a.Value * b.Value;
                     }
@@ -219,8 +218,7 @@ public class RPNCalculator<T> : IRPNCalculator
                                 result |= (a.Value & MaskRight(amount - 1)) << (residual + 1);
                             if (carryIn)
                                 result |= T.One << residual;
-                        }
-                        else {
+                        } else {
                             flags = GetResultFlags(a.Value, WordBits - 1);
                             result = (a.Value << 1) | (carryIn ? T.One : T.Zero);
                         }
@@ -236,8 +234,7 @@ public class RPNCalculator<T> : IRPNCalculator
                 default:
                     throw new NotImplementedException();
             }
-        }
-        catch {
+        } catch {
             _stack.PushFront(a);
             _stack.PushFront(b);
             throw;
@@ -280,8 +277,7 @@ public class RPNCalculator<T> : IRPNCalculator
                 UnaryOperation.ByteSwap => CalculatorMath.ByteSwap(val.Value),
                 _ => throw new NotSupportedException(nameof(op)),
             };
-        }
-        catch {
+        } catch {
             _stack.PushFront(val);
             throw;
         }
@@ -396,8 +392,7 @@ public class RPNCalculator<T> : IRPNCalculator
                     SwapComment(val);
                     break;
             }
-        }
-        catch {
+        } catch {
             if (input == null)
                 _stack.PushFront(saved);
             throw;

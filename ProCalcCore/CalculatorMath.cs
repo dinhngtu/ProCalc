@@ -81,8 +81,7 @@ public static class CalculatorMath {
         UInt128 result;
         try {
             result = checked(la * lb);
-        }
-        catch (OverflowException) {
+        } catch (OverflowException) {
             return true;
         }
         return a switch {

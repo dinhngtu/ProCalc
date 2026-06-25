@@ -95,8 +95,7 @@ public class Deque<T>(int capacity) : IEnumerable<T> {
                 if (index >= Count)
                     throw new IndexOutOfRangeException();
                 return _data[(_tail + index) % Capacity];
-            }
-            else {
+            } else {
                 if (index < -Count)
                     throw new IndexOutOfRangeException();
                 return _data[(_head + index + Capacity) % Capacity];
@@ -107,8 +106,7 @@ public class Deque<T>(int capacity) : IEnumerable<T> {
                 if (index >= Count)
                     throw new IndexOutOfRangeException();
                 _data[(_tail + index) % Capacity] = value;
-            }
-            else {
+            } else {
                 if (index < -Count)
                     throw new IndexOutOfRangeException();
                 _data[(_head + index + Capacity) % Capacity] = value;
@@ -122,13 +120,11 @@ public class Deque<T>(int capacity) : IEnumerable<T> {
             for (int pos = _tail; pos < _tail + Math.Min(amount, Count); pos++) {
                 yield return _data[pos];
             }
-        }
-        else if (amount <= Capacity - _tail) {
+        } else if (amount <= Capacity - _tail) {
             for (int pos = _tail; pos < _tail + amount; pos++) {
                 yield return _data[pos];
             }
-        }
-        else {
+        } else {
             for (int pos = _tail; pos < Capacity; pos++) {
                 yield return _data[pos];
             }
@@ -144,13 +140,11 @@ public class Deque<T>(int capacity) : IEnumerable<T> {
             for (int pos = _head - 1; pos >= _head - limit; pos--) {
                 yield return _data[pos];
             }
-        }
-        else if (limit <= _head) {
+        } else if (limit <= _head) {
             for (int pos = _head - 1; pos >= _head - limit; pos--) {
                 yield return _data[pos];
             }
-        }
-        else {
+        } else {
             for (int pos = _head - 1; pos >= 0; pos--) {
                 yield return _data[pos];
             }
